@@ -10,8 +10,7 @@ scART is a Shen-lab in-house bioinformatics pipeline for single cell ATAC-seq (s
 scART is a statistical and powerfule toolkit to liminate noise and select significant features for cell state 
 recognition and lineage construction from sparse single-cell epigenetic data. Using a compendium of single cell 
 ATAC-seq datasets, scART exploited for robust recognizion of cell types and relevant regulons, as well as 
-achieved learning developing trajectory from single-cell epigenetic data. scART decodes the regulatory heterogeneity 
-in cell populations and reconstructed cell fate transition.
+achieved learning developing trajectory from single-cell epigenetic data. scART decodes the regulatory heterogeneity in cell populations and reconstructed cell fate transition.
 
 ## Dependencies (for R >= 3.4.4) 
 The following packages have to be installed manually before installing scART:
