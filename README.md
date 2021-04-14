@@ -45,7 +45,10 @@ source('function.R')
 
 # Creating the scART object, replacing missing value and filtering bins
 ```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
-art <- CreatescART(data,metadata = annotation)  #metadata = annotation)
+art <- CreatescART(data,metadata = annotation)  
+# You can also use snap/10X output directory by Read_snap and Read_10X(Read_10X_h5) respectively.
+# Or you can put the barcodes.tsv, bins.bed, matrix.mtx in a fold and provide Read_counts() with the fold address.
+
 art <- RunImputation(art,k=1)
 art <- SparseFilter(art, ncell=2, ncell2=0.8, ncell3=2, nbin=10)
 ```
