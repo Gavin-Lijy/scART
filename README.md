@@ -69,7 +69,10 @@ set.seed(10)
 art <- RunCluster(art,delta_cutoff = 4,rho_cutoff = 8)
 ```
 
+![cluster](README.assets/cluster.png)
+
 # Visualize an Embedding
+
 ```{r}
 set.seed(10) 
 art <- RunTSNE(art, nSV=10, ndims=2, perplexity=30)
@@ -99,7 +102,7 @@ art <- MapBin2Gene(art, Org = 'hg19')
 PlotSelectGenesATAC(art, gene2plot = c('GATA1','EBF1'))  
 ```
 
-![plotGene](image/plotGene.png)
+<img src="image/plotGene.png" alt="plotGene" style="zoom: 67%;" />
 
 # RunChromVAR 
 
