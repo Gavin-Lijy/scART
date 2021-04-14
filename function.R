@@ -64,166 +64,38 @@ CreatescART=function(data,barcode,bins,metadata){
   return(obj)
 }
 
-
-Read_10X <- function(
-  data.dir,
-  cell.column = 1,
-  unique.features = TRUE,
-  strip.suffix = FALSE) {
-  for (i in seq_along(along.with = data.dir)) {
-    run <- data.dir[i]
-    if (!dir.exists(paths = run)) {
-      stop("Directory provided does not exist")
+RunImputation=function(obj,k=1,ratio=1){
+  library(Matrix)
+  m=obj@bmat$raw
+  knn=function(m,k=1,ratio=1){
+    binarize= function(x,threshold=NA) {
+      x@x[x@x < threshold] = 0
+      x@x[x@x >=threshold] = 1
+      return(x)
     }
-    barcode.loc <- file.path(run, 'barcodes.tsv')
-    peaks.loc <- file.path(run, 'peaks.bed')
-    matrix.loc <- file.path(run, 'matrix.mtx')
-    # Flag to indicate if this data is from CellRanger >= 3.0
+    rows<-nrow(m)
+    if(!k%in%1:5){stop('k should be int in 1:5')}
+    new<-m[1:(rows-2*k),]+m[(2*k+1):rows,]
+    rownames(new)<-rownames(m)[(k+1):(rows-k)]
+    if(k>1){ 
+      for (i in (k-1):1 ){ 
+        new<-new+m[(1+i):(rows-2*k+i),]+m[(2*k+1-i):(rows-i),]
+      }}
     
-    if (!file.exists(barcode.loc)) {
-      stop("Barcode file missing. Expecting ", basename(path = barcode.loc))
-    }
-    if (!file.exists(peaks.loc) ) {
-      stop("Peaks name or features file missing. Expecting ", basename(path = features.loc))
-    }
-    if (!file.exists(matrix.loc)) {
-      stop("Expression matrix file missing. Expecting ", basename(path = matrix.loc))
-    }
-    library(Matrix)
-    data <- as(readMM(file = matrix.loc),'dgCMatrix')
-    cell.barcodes <- read.table(file = barcode.loc, header = FALSE, row.names = NULL)
+    bi<-binarize(new,threshold=2*k*ratio)
+    m_sum<-bi+m[(k+1):(rows-k),]
+    matrix<-binarize(m_sum,threshold=0.5)
+    final<-rbind(m[1:k,],matrix,m[(rows-k+1):rows,])   
+    final@Dimnames[[1]]=m@Dimnames[[1]]
+    final<-as(as.matrix(final),"Matrix")
+    return(final)
     
-    
-    peaks <- read.delim(
-      file = peaks.loc,
-      header = FALSE, stringsAsFactors = FALSE)
-    
-    colnames(data)<-cell.barcodes$V1
-    rownames(data)<-paste0(peaks$V1,'-',peaks$V2,'-',peaks$V3)
-    art<-CreatescART(data)
-    return(art)
   }
-}
-
-
-Read_10X_h5 <- function(filename, use.names = TRUE, unique.features = TRUE) {
-  if (!requireNamespace('hdf5r', quietly = TRUE)) {
-    stop("Please install hdf5r to read HDF5 files")
-  }
-  if (!file.exists(filename)) {
-    stop("File not found")
-  }
-  infile <- hdf5r::H5File$new(filename = filename, mode = 'r')
-  genomes <- names(x = infile)
-  output <- list()
-  if (hdf5r::existsGroup(infile, 'matrix')) {
-    # cellranger version 3
-    if (use.names) {
-      feature_slot <- 'features/name'
-    } else {
-      feature_slot <- 'features/id'
-    }
-  } else {
-    if (use.names) {
-      feature_slot <- 'gene_names'
-    } else {
-      feature_slot <- 'genes'
-    }
-  }
-  for (genome in genomes) {
-    counts <- infile[[paste0(genome, '/data')]]
-    indices <- infile[[paste0(genome, '/indices')]]
-    indptr <- infile[[paste0(genome, '/indptr')]]
-    shp <- infile[[paste0(genome, '/shape')]]
-    features <- infile[[paste0(genome, '/', feature_slot)]][]
-    barcodes <- infile[[paste0(genome, '/barcodes')]]
-    sparse.mat <- sparseMatrix(
-      i = indices[] + 1,
-      p = indptr[],
-      x = as.numeric(x = counts[]),
-      dims = shp[],
-      giveCsparse = FALSE
-    )
-    if (unique.features) {
-      features <- make.unique(names = features)
-    }
-    rownames(x = sparse.mat) <- features
-    colnames(x = sparse.mat) <- barcodes[]
-    sparse.mat <- as(object = sparse.mat, Class = 'dgCMatrix')
-    # Split v3 multimodal
-    if (infile$exists(name = paste0(genome, '/features'))) {
-      types <- infile[[paste0(genome, '/features/feature_type')]][]
-      types.unique <- unique(x = types)
-      if (length(x = types.unique) > 1) {
-        message("Genome ", genome, " has multiple modalities, returning a list of matrices for this genome")
-        sparse.mat <- sapply(
-          X = types.unique,
-          FUN = function(x) {
-            return(sparse.mat[which(x = types == x), ])
-          },
-          simplify = FALSE,
-          USE.NAMES = TRUE
-        )
-      }
-    }
-    output[[genome]] <- sparse.mat
-  }
-  infile$close_all()
-  output$matrix@Dimnames[[1]]=gsub(':','-', output$matrix@Dimnames[[1]])
-  obj<-CreatescART(output$matrix)
+  final<-knn(m,k=k,ratio = ratio)
+  
+  obj@bmat$imputation<-final
   return(obj)
 }
-
-Read_counts <- function(
-  data.dir,
-  cell.column = 1,
-  unique.features = TRUE,
-  strip.suffix = FALSE) {
-  for (i in seq_along(along.with = data.dir)) {
-    run <- data.dir[i]
-    if (!dir.exists(paths = run)) {
-      stop("Directory provided does not exist")
-    }
-    barcode.loc <- file.path(run, 'barcodes.tsv')
-    peaks.loc <- file.path(run, 'bins.bed')
-    matrix.loc <- file.path(run, 'matrix.mtx')
-    # Flag to indicate if this data is from CellRanger >= 3.0
-    
-    if (!file.exists(barcode.loc)) {
-      stop("Barcode file missing. Expecting ", basename(path = barcode.loc))
-    }
-    if (!file.exists(peaks.loc) ) {
-      stop("peaks name or features file missing. Expecting ", basename(path = features.loc))
-    }
-    if (!file.exists(matrix.loc)) {
-      stop("Expression matrix file missing. Expecting ", basename(path = matrix.loc))
-    }
-    library(Matrix)
-    data <- as(readMM(file = matrix.loc),'dgCMatrix')
-    cell.barcodes <- read.table(file = barcode.loc, header = FALSE, row.names = NULL)
-    
-    
-    peaks <- read.delim(
-      file = peaks.loc,
-      header = FALSE, stringsAsFactors = FALSE)
-    
-    colnames(data)<-cell.barcodes$V1
-    rownames(data)<-paste0(peaks$V1,'-',peaks$V2,'-',peaks$V3)
-    art<-CreatescART(data)
-    return(art)
-  }
-}
-
-Read_snap<-function(file,sample="atac"){
-  library(SnapATAC)
-  obj<-createSnap(file = file,sample = sample)
-  data<-demo.sp@bmat
-  data@Dimnames[[1]] <- gsub(':','-',obj@feature$name) 
-  data@Dimnames[[2]]<- obj@barcode
-  art<-CreatescART(data)
-  return(art)
-}
-
 
 
 SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, genome='hg19') {
@@ -242,7 +114,7 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   );
   idy = queryHits(findOverlaps(obj@feature, black_list.gr));
   if(length(idy) > 0){raw<-raw[-idy,]}
- 
+  
   
   if (is.null(ncell)) {
     ncell <- dim(raw)[2]*0.05
@@ -495,7 +367,7 @@ RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV) {
       tsne_3D <- tsne_3D
     }
   library(densityClust)
-
+  
   set.seed(10)
   points <- tsne_3D
   dis <- dist(points)
@@ -767,12 +639,12 @@ RunUMAP<-function(obj,dims=2){
   svd<-obj@reductions$SVD@x
   umaps  <- uwot::umap(svd,n_components = dims) 
   if(dims==2){
-  colnames(umaps)=c('UMAP_1','UMAP_2')}
+    colnames(umaps)=c('UMAP_1','UMAP_2')}
   if(dims==3){colnames(umaps)=c('UMAP_1','UMAP_2','UMAP_3')}
   if(dims==2){
-  obj@reductions$UMAP<-as(umaps,'Matrix')
-  return(obj)}else{return(umaps)}
- }
+    obj@reductions$UMAP<-as(umaps,'Matrix')
+    return(obj)}else{return(umaps)}
+}
 
 
 ### ****** 3. a function to run motif enrichment using ChromVAR standard pipeline ------------
@@ -785,11 +657,11 @@ RunChromVAR <- function(
   min.count=1, ### the threshold of a peaks found at at least 10 cells
   species = c("Homo sapiens") ### default is Homo sapiens ,"Mus musculus"
 ){
-  Bmat<-obj@bmat$filter[,1:20]
+  Bmat<-obj@bmat$filter
   options(stringsAsFactors = F)
   cat(">> checking depedent packages ... \t\t\t", format(Sys.time(), 
                                                          "%Y-%m-%d %X"), "\n")
- 
+  
   if (!(requireNamespace("SummarizedExperiment", quietly = TRUE))) {
     message("Please install package 'SummarizedExperiment'")
     BiocManager::install('SummarizedExperiment')
@@ -912,7 +784,7 @@ RunChromVAR <- function(
     bins = as.character(rownames(Bmat))
     bins_bed = do.call(rbind, strsplit(x = bins, split = '[:-]'))
     bins_bed = as.data.frame(bins_bed)
-   
+    
     write.table(bins_bed, "./bins_bed.bed", quote=F, sep="\t",row.names=F, col.names=F)
     peakfile <- "./bins_bed.bed"
     peak.use <- chromVAR::getPeaks(peakfile, sort_peaks = TRUE)
@@ -965,7 +837,7 @@ RunChromVAR <- function(
   
   cat(">>> Done ... \t\t\t", format(Sys.time(), 
                                     "%Y-%m-%d %X"), "\n")
-  obj@mmat<-as(dev_mat,'Matrix')
+  obj@mmat<-t(as(dev_mat,'Matrix'))
   return(obj)
 }
 
@@ -1025,7 +897,7 @@ PlotSelectGenesATAC = function(obj,gene2plot = c("Snap25", "Gad2", "Apoe"),
   mat2plot =  Gmat[rownames(Gmat)%in%gene2plot,]
   if(mode(mat2plot)=='numeric'){ 
     mat2plot=as.data.frame(t(mat2plot))
-  rownames(mat2plot)<-gene2plot}
+    rownames(mat2plot)<-gene2plot}
   gene2plot = rownames(mat2plot)
   
   if(length(gene2plot)>9){
@@ -1330,7 +1202,7 @@ plotTrajectory <- function(obj,anno=NULL,color=NULL) {
 
 
 RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim=NULL,data=NULL,gamma=NULL){
-    
+  
   if (is.null(sigma)) {
     sigma <- 0.001
   } else {
@@ -1377,7 +1249,7 @@ RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim
   rownames(expr_matrix) <- c(paste("dim",c(1:dim(expr_matrix)[1]),sep="_"))
   
   cells <- as.data.frame(anno)
-
+  
   genes <- as.data.frame(rownames(expr_matrix))
   colnames(genes) <- c("gene_short_name")
   rownames(genes) <- rownames(expr_matrix)
@@ -1390,8 +1262,8 @@ RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim
   HSMM <- suppressWarnings(estimateSizeFactors(HSMM))
   
   HSMM <- suppressWarnings(reduceDimension(HSMM, max_components=3, norm_method='none', 
-                          scaling=T,reduction_method="DDRTree", 
-                          sigma = sigma,lambda=lambda, param.gamma = gamma, verbose=F))
+                                           scaling=T,reduction_method="DDRTree", 
+                                           sigma = sigma,lambda=lambda, param.gamma = gamma, verbose=F))
   
   points <- t(HSMM@reducedDimS)
   obj@trajectory<- as(points,'Matrix')
@@ -1545,5 +1417,297 @@ MapBin2Gene = function(obj, ### the cell-by-bin matrix
   return(obj)
 }
 
+PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1", "DLX6"), 
+                       reduction = 'TSNE',
+                       ncol = NULL){
+  plot_theme <- theme(plot.title = element_text(hjust = 0.5, size = 20),
+                      #legend.position = 'right',
+                      legend.title =element_text(size=15),
+                      legend.text = element_text(size=15),
+                      axis.text.x = element_text(size=15),
+                      axis.title.x = element_text(size=15),
+                      axis.title.y = element_text(size=15),
+                      axis.text.y  = element_text(size=15),
+                      panel.border = element_blank(),
+                      axis.line.x = element_line(size=0.25, color="black"),
+                      axis.line.y = element_line(size=0.25, color="black"),
+                      panel.grid.minor.x = element_blank(), panel.grid.minor.y = element_blank(),
+                      panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank(),
+                      panel.background = element_rect(fill='white'),
+                      legend.key=element_blank(),
+                      strip.text.x = element_text(size=15),
+                      strip.text.y = element_text(size=15),
+                      strip.background = element_rect(colour = 'white', fill = 'white'))
+  
+  if (!(requireNamespace("ggplot2", quietly = TRUE))) {
+    cat("Please install package 'ggplot2'");
+    install.packages('ggplot2')
+  }
+  
+  if (!(requireNamespace("ggpubr", quietly = TRUE))) {
+    cat("Please install package 'ggpubr'");
+    install.packages('ggpubr')
+  }
+  library(ggplot2)
+  library(ggpubr)
+  library(cowplot)
+  Gmat<-obj@mmat
+  cellsReduction<-data.frame(obj@barcode)
+  
+  # if(sum(!is.data.frame(Gmat))>0){
+  #   Gmat = as.data.frame(Gmat)
+  # }
+  name<-lapply(rownames(Gmat), function(x) {strsplit(x,split = '_')})
+  
+  name<-data.frame(matrix(unlist(name),ncol = 2, byrow=T),stringsAsFactors=FALSE)
+  
+  mat2plot =  Gmat[name$X2%in%TF2plot,]
+  if(mode(mat2plot)=='numeric'){ 
+    mat2plot=as.data.frame(t(mat2plot))
+    rownames(mat2plot)<-TF2plot}
+  TF2plot = rownames(mat2plot)
+  
+  if(length(TF2plot)>9){
+    stop('The maximun of genes to plot was limmited to 9!')
+  }
+  
+  p.list = lapply(1:nrow(mat2plot),
+                  function(i){
+                    gene = rownames(mat2plot)[i]
+                    cellsReduction[,'level'] = as.numeric(mat2plot[gene,])
+                    if(reduction == 'UMAP'){
+                      UMAP_1<-obj@reductions$UMAP[,'UMAP_1']
+                      UMAP_2<-obj@reductions$UMAP[,'UMAP_2']
+                      umap = ggplot(cellsReduction[order(cellsReduction[,'level']),],
+                                    aes(x=UMAP_1,y=UMAP_2,col=level))+ geom_point(size=1) +
+                        scale_color_gradient(low = 'lightgrey', high = 'red') +
+                        labs(title = gene, x = 'UMAP_1', y = 'UMAP_2')+  
+                        plot_theme +theme(legend.position = 'right', legend.title = element_blank())
+                      umap
+                    }else{
+                      tSNE_1<-obj@reductions$TSNE@matrix[,'tSNE_1']
+                      tSNE_2<-obj@reductions$TSNE@matrix[,'tSNE_2']
+                      tsne = ggplot(cellsReduction[order(cellsReduction[,'level']),],
+                                    aes(x=tSNE_1,y=tSNE_2,col=level))+ geom_point(size=1) +
+                        scale_color_gradient(low = 'lightgrey', high = 'red') +
+                        labs(title = gene, x = 'tSNE_1', y = 'tSNE_2')+
+                        plot_theme +theme(legend.position = 'right', legend.title = element_blank())
+                      tsne
+                    }
+                  })
+  
+  if (is.null(x = ncol)) {
+    ncol <- 2
+    if (length(x = TF2plot) == 1) {
+      ncol <- 1
+    }
+    if (length(x = TF2plot) > 4) {
+      ncol <- 3
+    }
+  }
+  
+  if(length(TF2plot)==1){
+    print(p.list[[1]])
+  }
+  if(length(TF2plot)==2){
+    print(plot_grid(p.list[[1]], p.list[[2]], ncol=ncol))
+  }
+  if(length(TF2plot)==3){
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]], ncol=ncol))
+  }
+  if(length(TF2plot)==4){
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]], ncol=ncol))
+  }
+  if(length(TF2plot)==5){
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]], p.list[[5]], ncol=ncol))
+  }
+  if(length(TF2plot)==6){
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]],
+                    p.list[[5]], p.list[[6]], ncol=ncol))
+  }
+  if(length(TF2plot)==7){
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]],
+                    p.list[[5]], p.list[[6]],
+                    p.list[[7]], ncol=ncol))
+  }
+  if(length(TF2plot)==8){
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]],
+                    p.list[[5]], p.list[[6]],
+                    p.list[[7]], p.list[[8]],ncol=ncol))
+  }
+  if(length(TF2plot)==9){
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]],
+                    p.list[[5]], p.list[[6]],
+                    p.list[[7]], p.list[[8]],
+                    p.list[[9]], ncol=ncol))
+  }
+}
+
+
+Read_10X <- function(
+  data.dir,
+  cell.column = 1,
+  unique.features = TRUE,
+  strip.suffix = FALSE) {
+  for (i in seq_along(along.with = data.dir)) {
+    run <- data.dir[i]
+    if (!dir.exists(paths = run)) {
+      stop("Directory provided does not exist")
+    }
+    barcode.loc <- file.path(run, 'barcodes.tsv')
+    peaks.loc <- file.path(run, 'peaks.bed')
+    matrix.loc <- file.path(run, 'matrix.mtx')
+    # Flag to indicate if this data is from CellRanger >= 3.0
+    
+    if (!file.exists(barcode.loc)) {
+      stop("Barcode file missing. Expecting ", basename(path = barcode.loc))
+    }
+    if (!file.exists(peaks.loc) ) {
+      stop("Peaks name or features file missing. Expecting ", basename(path = features.loc))
+    }
+    if (!file.exists(matrix.loc)) {
+      stop("Expression matrix file missing. Expecting ", basename(path = matrix.loc))
+    }
+    library(Matrix)
+    data <- as(readMM(file = matrix.loc),'dgCMatrix')
+    cell.barcodes <- read.table(file = barcode.loc, header = FALSE, row.names = NULL)
+    
+    
+    peaks <- read.delim(
+      file = peaks.loc,
+      header = FALSE, stringsAsFactors = FALSE)
+    
+    colnames(data)<-cell.barcodes$V1
+    rownames(data)<-paste0(peaks$V1,'-',peaks$V2,'-',peaks$V3)
+    art<-CreatescART(data)
+    return(art)
+  }
+}
+
+
+Read_10X_h5 <- function(filename, use.names = TRUE, unique.features = TRUE) {
+  if (!requireNamespace('hdf5r', quietly = TRUE)) {
+    stop("Please install hdf5r to read HDF5 files")
+  }
+  if (!file.exists(filename)) {
+    stop("File not found")
+  }
+  infile <- hdf5r::H5File$new(filename = filename, mode = 'r')
+  genomes <- names(x = infile)
+  output <- list()
+  if (hdf5r::existsGroup(infile, 'matrix')) {
+    # cellranger version 3
+    if (use.names) {
+      feature_slot <- 'features/name'
+    } else {
+      feature_slot <- 'features/id'
+    }
+  } else {
+    if (use.names) {
+      feature_slot <- 'gene_names'
+    } else {
+      feature_slot <- 'genes'
+    }
+  }
+  for (genome in genomes) {
+    counts <- infile[[paste0(genome, '/data')]]
+    indices <- infile[[paste0(genome, '/indices')]]
+    indptr <- infile[[paste0(genome, '/indptr')]]
+    shp <- infile[[paste0(genome, '/shape')]]
+    features <- infile[[paste0(genome, '/', feature_slot)]][]
+    barcodes <- infile[[paste0(genome, '/barcodes')]]
+    sparse.mat <- sparseMatrix(
+      i = indices[] + 1,
+      p = indptr[],
+      x = as.numeric(x = counts[]),
+      dims = shp[],
+      giveCsparse = FALSE
+    )
+    if (unique.features) {
+      features <- make.unique(names = features)
+    }
+    rownames(x = sparse.mat) <- features
+    colnames(x = sparse.mat) <- barcodes[]
+    sparse.mat <- as(object = sparse.mat, Class = 'dgCMatrix')
+    # Split v3 multimodal
+    if (infile$exists(name = paste0(genome, '/features'))) {
+      types <- infile[[paste0(genome, '/features/feature_type')]][]
+      types.unique <- unique(x = types)
+      if (length(x = types.unique) > 1) {
+        message("Genome ", genome, " has multiple modalities, returning a list of matrices for this genome")
+        sparse.mat <- sapply(
+          X = types.unique,
+          FUN = function(x) {
+            return(sparse.mat[which(x = types == x), ])
+          },
+          simplify = FALSE,
+          USE.NAMES = TRUE
+        )
+      }
+    }
+    output[[genome]] <- sparse.mat
+  }
+  infile$close_all()
+  output$matrix@Dimnames[[1]]=gsub(':','-', output$matrix@Dimnames[[1]])
+  obj<-CreatescART(output$matrix)
+  return(obj)
+}
+
+Read_counts <- function(
+  data.dir,
+  cell.column = 1,
+  unique.features = TRUE,
+  strip.suffix = FALSE) {
+  for (i in seq_along(along.with = data.dir)) {
+    run <- data.dir[i]
+    if (!dir.exists(paths = run)) {
+      stop("Directory provided does not exist")
+    }
+    barcode.loc <- file.path(run, 'barcodes.tsv')
+    peaks.loc <- file.path(run, 'bins.bed')
+    matrix.loc <- file.path(run, 'matrix.mtx')
+    # Flag to indicate if this data is from CellRanger >= 3.0
+    
+    if (!file.exists(barcode.loc)) {
+      stop("Barcode file missing. Expecting ", basename(path = barcode.loc))
+    }
+    if (!file.exists(peaks.loc) ) {
+      stop("peaks name or features file missing. Expecting ", basename(path = features.loc))
+    }
+    if (!file.exists(matrix.loc)) {
+      stop("Expression matrix file missing. Expecting ", basename(path = matrix.loc))
+    }
+    library(Matrix)
+    data <- as(readMM(file = matrix.loc),'dgCMatrix')
+    cell.barcodes <- read.table(file = barcode.loc, header = FALSE, row.names = NULL)
+    
+    
+    peaks <- read.delim(
+      file = peaks.loc,
+      header = FALSE, stringsAsFactors = FALSE)
+    
+    colnames(data)<-cell.barcodes$V1
+    rownames(data)<-paste0(peaks$V1,'-',peaks$V2,'-',peaks$V3)
+    art<-CreatescART(data)
+    return(art)
+  }
+}
+
+Read_snap<-function(file,sample="atac"){
+  library(SnapATAC)
+  obj<-createSnap(file = file,sample = sample)
+  data<-demo.sp@bmat
+  data@Dimnames[[1]] <- gsub(':','-',obj@feature$name) 
+  data@Dimnames[[2]]<- obj@barcode
+  art<-CreatescART(data)
+  return(art)
+}
 
 
