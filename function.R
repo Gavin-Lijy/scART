@@ -64,10 +64,7 @@ CreatescART=function(data,barcode,bins,metadata){
   return(obj)
 }
 
-setwd('D:/OneDrive - zju.edu.cn/research/bioin/lab/shenli/R_packages')
-source('./function.R')
-source('./scART.R')
-data.dir<-'C:/Users/22152/Desktop/filtered_peak_bc_matrix'
+
 Read_10X <- function(
   data.dir,
   cell.column = 1,
@@ -107,7 +104,6 @@ Read_10X <- function(
     return(art)
   }
 }
-filename='C:/Users/22152/Desktop/atac_pbmc_500_nextgem_filtered_peak_bc_matrix.h5'
 
 
 Read_10X_h5 <- function(filename, use.names = TRUE, unique.features = TRUE) {
@@ -217,7 +213,7 @@ Read_counts <- function(
     return(art)
   }
 }
-file='C:/Users/22152/Desktop/filtered_peak_bc_matrix/p0.snap'
+
 Read_snap<-function(file,sample="atac"){
   library(SnapATAC)
   obj<-createSnap(file = file,sample = sample)
@@ -229,25 +225,6 @@ Read_snap<-function(file,sample="atac"){
 }
 
 
-RunImputation=function(obj,k=1){
-  library(Matrix)
-  binarize= function(x,threshold=NA) {
-    
-    x@x[x@x <= threshold] = 0
-    x@x[x@x > threshold] = 1
-    return(x)
-  }
-  m=obj@bmat$raw
-  rows<-nrow(m)
-  new<-m[1:(rows-2),]+m[3:rows,]
-  bi<-binarize(new,threshold=1)
-  m_sum<-bi[1:(rows-2),]+m[2:(rows-1),]
-  matrix<-binarize(m_sum,threshold=0)
-  final<-rbind(m[1,],matrix,m[rows,])
-  final@Dimnames[[1]][c(1,rows)]=m@Dimnames[[1]][c(1,rows)]
-  obj@bmat$imputation<-final
-  return(obj)
-}
 
 SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, genome='hg19') {
   raw <- obj@bmat$imputation
@@ -1064,7 +1041,7 @@ PlotSelectGenesATAC = function(obj,gene2plot = c("Snap25", "Gad2", "Apoe"),
                       UMAP_2<-obj@reductions$UMAP[,'UMAP_2']
                       umap = ggplot(cellsReduction[order(cellsReduction[,'level']),],
                                     aes(x=UMAP_1,y=UMAP_2,col=level))+ geom_point(size=1) +
-                        scale_color_gradient(low = 'lightgrey', high = '#FF4500') +
+                        scale_color_gradient(low = 'lightgrey', high = 'red') +
                         labs(title = gene, x = 'UMAP_1', y = 'UMAP_2')+  
                         plot_theme +theme(legend.position = 'right', legend.title = element_blank())
                       umap
@@ -1073,7 +1050,7 @@ PlotSelectGenesATAC = function(obj,gene2plot = c("Snap25", "Gad2", "Apoe"),
                       tSNE_2<-obj@reductions$TSNE@matrix[,'tSNE_2']
                       tsne = ggplot(cellsReduction[order(cellsReduction[,'level']),],
                                     aes(x=tSNE_1,y=tSNE_2,col=level))+ geom_point(size=1) +
-                        scale_color_gradient(low = 'lightgrey', high = '#FF4500') +
+                        scale_color_gradient(low = 'lightgrey', high = 'red') +
                         labs(title = gene, x = 'tSNE_1', y = 'tSNE_2')+
                         plot_theme +theme(legend.position = 'right', legend.title = element_blank())
                       tsne

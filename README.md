@@ -1,5 +1,5 @@
 # scART
-![](image/scART_workflow.png)
+![flow](image/flow.png)
 
 
 # scART
@@ -53,13 +53,19 @@ art <- RunImputation(art,k=1)
 art <- SparseFilter(art, ncell=2, ncell2=0.8, ncell3=2, nbin=10)
 ```
 
-# Dimensionality reduction 
+# ![statistics](image/statistics.png)Dimensionality reduction 
+
 ```{r include=FALSE}
 art <- RunSim(art)
 art <- DimReduce(art)
 ```
 
-# Group cells into clusters, you can take a good look at the output pdf to adjust 'rho_cutoff' and 'delta_cutoff'
+![dim](README.assets/dim.png)
+
+# Group cells into clusters
+
+You can take a good look at the output pdf to adjust 'rho_cutoff' and 'delta_cutoff'
+
 ```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
 set.seed(10) 
 art <- RunCluster(art,delta_cutoff = 4,rho_cutoff = 8)
@@ -77,21 +83,38 @@ p1|p2
 
 ```
 
+![umap](README.assets/umap.png)
+
 # Trajectory analysis and visualization
+
 ```{r}
 art <- RunTrajectory(art, anno='cell_type', nSV = 10, ndim= 3, gamma = 10)
 plotTrajectory(art)
 ```
 
+![trajectory](README.assets/trajectory.png)
+
 # Create cell-by-gene matrix and explore gene accessibility score
+
 ```{r}
 art <- MapBin2Gene(art, Org = 'hg19')
 PlotSelectGenesATAC(art, gene2plot = c('GATA1','EBF1'))  
 ```
 
-# 
+![plotGene](image/plotGene.png)
+
+# RunChromVAR 
+
+
 ```{r}
-art <- RunChromVAR(art,Org=c('hg19'),species = c("Homo sapiens") ,min.count=1)
+art <- RunChromVAR(art,Org=c('hg19'),species = c("Homo sapiens") ,min.count=10)
+PlotSelectTF(art,TF2plot=c('GATA1'))
 ### min.count:the threshold of a peaks found at at least 10 cells
+```
+
+![motif](image/motif.png)
+
+```R
+save(art,'scart.Rdata')
 ```
 
