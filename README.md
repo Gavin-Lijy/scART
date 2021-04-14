@@ -66,7 +66,7 @@ art <- DimReduce(art)
 You can take a good look at the output pdf to adjust 'rho_cutoff' and 'delta_cutoff'
 ```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
 set.seed(10) 
-art <- RunCluster(art,delta_cutoff = 4,rho_cutoff = 8)
+art <- RunCluster(art,delta_cutoff = 11,rho_cutoff = 45)
 ```
 ![cluster](image/cluster.png)
 
@@ -75,7 +75,7 @@ art <- RunCluster(art,delta_cutoff = 4,rho_cutoff = 8)
 # Visualize an Embedding
 ```{r}
 set.seed(10) 
-art <- RunTSNE(art, nSV=10, ndims=2, perplexity=30)
+art <- RunTSNE(art, nSV=20, ndims=2, perplexity=30)
 art <- RunUMAP(art)
 p1 <- Visualization_2D(art,reductions = 'UMAP') 
 p2 <- Visualization_2D(art,reductions = 'TSNE')
@@ -88,7 +88,7 @@ p1|p2
 
 # Trajectory analysis and visualization
 ```{r}
-art <- RunTrajectory(art, anno='cell_type', nSV = 10, ndim= 3, gamma = 10)
+art <- RunTrajectory(art, anno='cell_type', nSV = 20, ndim= 3, gamma = 10)
 plotTrajectory(art)
 ```
 ![trajectory](image/trajectory.png)
