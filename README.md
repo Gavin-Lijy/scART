@@ -58,7 +58,7 @@ art <- RunSim(art)
 art <- DimReduce(art)
 ```
 
-![dim](README.assets/dim.png)
+![dim](image/dim.png)
 
 # Group cells into clusters
 
@@ -69,7 +69,7 @@ set.seed(10)
 art <- RunCluster(art,delta_cutoff = 4,rho_cutoff = 8)
 ```
 
-![cluster](README.assets/cluster.png)
+![cluster](image/cluster.png)
 
 # Visualize an Embedding
 
@@ -84,7 +84,7 @@ p1|p2
 
 ```
 
-![umap](README.assets/umap.png)
+![umap](image/umap.png)
 
 # Trajectory analysis and visualization
 
@@ -93,7 +93,7 @@ art <- RunTrajectory(art, anno='cell_type', nSV = 10, ndim= 3, gamma = 10)
 plotTrajectory(art)
 ```
 
-![trajectory](README.assets/trajectory.png)
+![trajectory](image/trajectory.png)
 
 # Create cell-by-gene matrix and explore gene accessibility score
 
