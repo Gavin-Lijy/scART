@@ -1124,13 +1124,14 @@ differentialGeneTest <- function(cds,
 
 
 
-FindDAR <- function(data, test_clust, cluster_result){
+FindDAR <- function(obj, test_clust,out_dir=NULL){
+  if(is.null(out_dir)){out_dir=getwd()}
   cluster <- test_clust
   Cluster <- paste("Cluster",cluster,sep="")
-  
-  xda_mat_final = as.martrix(data)
-  dclust <- cluster_result
-  clusterfactor <- factor((dclust$cluster==as.character(cluster))+0,levels=c("0","1"))
+  library(Matrix)
+  da_mat_final = as.matrix(obj@bmat$filter)
+  dclust <- obj@metaData$cluster
+  clusterfactor <- factor((dclust==as.character(cluster))+0,levels=c("0","1"))
   pda = data.frame(as.character(colnames(da_mat_final)),
                    clusterfactor)
   names(pda) = c("CellID","CellCluster")
@@ -1142,14 +1143,14 @@ FindDAR <- function(data, test_clust, cluster_result){
   colnames(da_mat_final) = NULL
   library(SummarizedExperiment)
   library(monocle)
-  submat_cds =  newCellDataSet(da_mat_final,
-                               featureData = fda,
-                               phenoData = pda,
-                               lowerDetectionLimit=1)
+  submat_cds = suppressWarnings( newCellDataSet(da_mat_final,
+                                                featureData = fda,
+                                                phenoData = pda,
+                                                lowerDetectionLimit=1))
   
   pData(submat_cds)$Size_Factor = 1
-  differtest = differentialGeneTest(submat_cds, fullModelFormulaStr = "~CellCluster ",cores=15)
-  write.table(differtest[order(differtest$qval),], paste(out_dir,Cluster,"_peak.txt",sep=""),quote=F,sep="\t")
+  differtest =  suppressWarnings( differentialGeneTest(submat_cds, fullModelFormulaStr = "~CellCluster ",cores=15))
+  write.table(differtest[order(differtest$qval),], paste(out_dir,'/',Cluster,"_peak.txt",sep=""),quote=F,sep="\t")
   diff <- differtest[order(differtest$qval),]
   diff <- diff[diff[,"qval"]<0.001,]
   write.table(diff, paste(Cluster,"_specific_peak.txt",sep=""),quote=F,sep="\t")
@@ -1161,9 +1162,12 @@ FindDAR <- function(data, test_clust, cluster_result){
   }
   
   rr<-do.call(rbind,lapply(as.character(dt[,1]),parts))
-  write.table(rr, paste("/",Cluster,"_specific_peak.bed",sep=""),quote=F,sep="\t",row.names=F, col.names=F)
+  write.table(rr, paste("./",Cluster,"_specific_peak.bed",sep=""),quote=F,sep="\t",row.names=F, col.names=F)
+  
   return(differtest)
 }
+
+
 
 
 
