@@ -1,14 +1,16 @@
 ---
-title: "Pipeline"
-output:
+title: "scART_tutorial"
+output: rmarkdown::html_vignet
   html_document:
     code_folding: show
     toc: yes
     toc_float:
       collapsed: no
       smooth_scroll: no
-  pdf_document:
-    toc: yes
+vignette: >
+  %\VignetteIndexEntry{scART_tutorial}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
