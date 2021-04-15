@@ -15,10 +15,11 @@
 #' @name scART-class
 #' @rdname scART-class
 #' @exportClass scART
-#' @importFrom methods setClassUnion GenomicRanges Matrix
-#' @import   GenomicRanges Matrix
+#' @importFrom methods setClassUnion 
+#' @import  Matrix GenomicRanges
 library(methods)
-library(GenomicRanges)
+# library(Matrix)
+# library(GenomicRanges)
 setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",bmat = "list",smat='Matrix',gmat = "Matrix",
                             mmat = "Matrix",reductions = "list",trajectory='Matrix' ))
 
