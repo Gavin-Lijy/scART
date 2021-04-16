@@ -195,7 +195,7 @@ RunSim <- function(obj) {
   summary(col)
   row <- sparse_Sums(ncounts, rowSums = T)
   summary(row)
-  a <- t(ncounts) 
+  a <- t(as.matrix(ncounts) )
   nfreqs = t(a / col)
   idf = as(log(1 + ncol(ncounts) / row), "sparseVector")
   a <- as(Diagonal(x=as.vector(idf)), "sparseMatrix")
@@ -1390,6 +1390,7 @@ MapBin2Gene = function(obj, ### the cell-by-bin matrix
                                                                     "Downstream", "Intergenic")) 
   
   bin2gene = as.data.frame(binAnno@anno)
+  library(data.table)
   data.table::setDT(bin2gene,keep.rownames = 'ID')
   head(bin2gene)
   
@@ -1416,7 +1417,7 @@ MapBin2Gene = function(obj, ### the cell-by-bin matrix
   }))
   rownames(mat2plot) = gene2use
   cat(">>", nrow(mat2plot), "genes with promoter ATAC bins retained after filtering ...\t\t\t", format(Sys.time(),  "%Y-%m-%d %X"), "\n")  
-  
+ mat2plot<- t(t(mat2plot)/colSums(obj@bmat$filter))*1000000
   obj@gmat<-as(as.matrix(mat2plot), "dgCMatrix")
   return(obj)
 }
@@ -1712,6 +1713,191 @@ Read_snap<-function(file,sample="atac"){
   data@Dimnames[[2]]<- obj@barcode
   art<-CreatescART(data)
   return(art)
+}
+
+#' Convert a snap object to a seurat object
+#'
+#' @param obj A snap object.
+#' @param eigs.dims A vector of the dimensions to use.
+#' @param norm A logical variable indicates whether to normalize the cell by gene matrix.
+#' @param scale A logical variable indicagtes whether to scale the cell by gene matrix.
+#' @return Return a seurat object that contains single cell ATAC-seq data
+#'
+#' @export
+
+Art2snap <- function(
+  obj, 
+  eigs.dims=1:20,
+  input.mat ="bmat",
+  norm=TRUE,
+  scale=TRUE){
+  cat("Epoch: checking input parameters ... \n", file = stderr())
+  if(missing(obj)){
+    stop("obj is missing")
+  }else{
+    if(!is(obj,'scART')){
+      stop("obj is not a snap object");
+    }  
+    if((x=length(obj@barcode))==0L){
+      stop("obj@barcode is empty");   
+    }
+  }
+  # check if Seurat is installed
+  if (requireNamespace("Seurat", quietly = TRUE)) {
+    require(Seurat)
+  } else {
+    stop("Please install Seurat V3 - learn more at https://github.com/satijalab/seurat");
+  }
+  
+  if((x=nrow(obj@gmat)) == 0L){
+    stop("gmat in obj is empty!");
+  }
+  gmat.use = (as(obj@gmat,'dgCMatrix'))
+  # check if mat is binary;
+  
+  
+  if(input.mat == "bmat"){
+    data.use = obj@bmat$filter
+    peak.use = as.data.frame(obj@feature);
+  }else{
+    data.use = obj@gmat;
+    peak.use = as.data.frame(rownames(data.use));
+  }
+  
+  if((x=nrow(data.use)) == 0L){
+    stop("input matrix is empty!")
+  }
+  
+  metaData.use = obj@metaData;
+  if((x=nrow(metaData.use)) == 0L){
+    stop("metaData is empty!")   
+  }
+  
+  ncell = length(obj@barcode)
+  nvar = dim(obj@reductions$SVD@x)[2];
+  
+  
+  
+  if(any(eigs.dims > nvar) ){
+    stop("'eigs.dims' exceeds PCA dimentions number");
+  }  
+  
+  
+  
+  pca.use = obj@reductions$SVD@x;
+  if((x=nrow(pca.use)) == 0L){
+    stop("dimentionality reduction is empty, runLDM first")
+  }else{
+    pca.use = pca.use[,eigs.dims]
+  }
+  
+  
+  colnames(x = gmat.use) = paste0(obj@barcode);
+  rownames(x = pca.use)  = paste0(obj@barcode);
+  rownames(metaData.use) = paste0(obj@barcode);
+  pbmc.atac <- CreateSeuratObject(counts = data.use, assay = "ATAC");
+  pbmc.atac[["ACTIVITY"]] <- CreateAssayObject(counts = as.data.frame(gmat.use))
+  pbmc.atac <- AddMetaData(pbmc.atac, metadata = metaData.use);
+  pbmc.atac$tech <- "atac"
+  DefaultAssay(pbmc.atac) <- "ATAC";
+  
+  colnames(x = pca.use) <- paste0("DC_", eigs.dims);
+  pbmc.atac[["SnapATAC"]] <- new(Class = "DimReduc", cell.embeddings =pca.use,
+                                 feature.loadings = matrix(0,0,0), feature.loadings.projected = matrix(0,0,0),
+                                 assay.used ="ATAC", stdev = rep(1,length(eigs.dims)), 
+                                 key ="DC_", jackstraw = new(Class = "JackStrawData"), misc = list()) 
+  
+  DefaultAssay(pbmc.atac) <- "ACTIVITY"
+  if(norm){ pbmc.atac <- NormalizeData(pbmc.atac)  }
+  if(scale){pbmc.atac <- ScaleData(pbmc.atac)}
+  return(pbmc.atac)
+}
+
+
+#' Convert a snap object to a seurat object
+#'
+#' @param obj A snap object.
+#' @param eigs.dims A vector of the dimensions to use.
+#' @param norm A logical variable indicates whether to normalize the cell by gene matrix.
+#' @param scale A logical variable indicagtes whether to scale the cell by gene matrix.
+#' @return Return a seurat object that contains single cell ATAC-seq data
+#'
+#' @export
+
+Art2snap <- function(
+  obj, 
+  input.mat ="bmat"){
+  cat("Epoch: checking input parameters ... \n", file = stderr())
+  if(missing(obj)){
+    stop("obj is missing")
+  }else{
+    if(!is(obj,'scART')){
+      stop("obj is not a snap object");
+    }  
+    if((x=length(obj@barcode))==0L){
+      stop("obj@barcode is empty");   
+    }
+  }
+  # check if Seurat is installed
+  if (requireNamespace("SnapATAC", quietly = TRUE)) {
+    require(SnapATAC)
+  } else {
+    stop("Please install SnapATAC");
+  }
+  
+  if((x=nrow(obj@gmat)) == 0L){
+    stop("gmat in obj is empty!");
+  }
+  gmat.use = (as(obj@gmat,'dgCMatrix'))
+  # check if mat is binary;
+  
+  
+  if(input.mat == "bmat"){
+    data.use = obj@bmat$filter
+    peak.use = as.data.frame(obj@feature);
+  }else{
+    data.use = obj@gmat;
+    peak.use = as.data.frame(rownames(data.use));
+  }
+  
+  if((x=nrow(data.use)) == 0L){
+    stop("input matrix is empty!")
+  }
+  
+  metaData.use = obj@metaData;
+  if((x=nrow(metaData.use)) == 0L){
+    stop("metaData is empty!")   
+  }
+  
+  ncell = length(obj@barcode)
+  nvar = dim(obj@reductions$SVD@x)[2];
+  
+  
+  
+  if(any(eigs.dims > nvar) ){
+    stop("'eigs.dims' exceeds PCA dimentions number");
+  }  
+  
+  
+  
+  pca.use = obj@reductions$SVD@x;
+  if((x=nrow(pca.use)) == 0L){
+    stop("dimentionality reduction is empty, runLDM first")
+  }else{
+    pca.use = pca.use[,eigs.dims]
+  }
+  
+  
+  colnames(x = gmat.use) = paste0(obj@barcode);
+  rownames(x = pca.use)  = paste0(obj@barcode);
+  rownames(metaData.use) = paste0(obj@barcode);
+  
+  
+  snap<- createSnapFromBmat(t(data.use),barcodes = obj@barcode,bins = obj@feature)
+  snap@gmat<-gmat.use
+  # if(norm){ pbmc.atac <- NormalizeData(pbmc.atac)  }
+  # if(scale){pbmc.atac <- ScaleData(pbmc.atac)} 
+  return(snap)
 }
 
 

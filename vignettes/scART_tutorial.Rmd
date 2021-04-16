@@ -63,9 +63,9 @@ PlotSelectGenesATAC(art,gene2plot = c('CDKN2C','BEND5'))
 
 ```
 ```{r}
-art<-RunChromVAR(art,Org=c('hg19'),species = c("Homo sapiens") ,min.count=1)
+art<-RunChromVAR(art,Org=c('hg19'),species = c("Homo sapiens") ,min.count=10)
 ### min.count:the threshold of a peaks found at at least 10 cells
-
+PlotSelectTF(art,)
 ```
 
 
