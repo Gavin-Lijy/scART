@@ -208,6 +208,7 @@ RunSim <- function(obj) {
   obj@smat<-cosine_sim
   return(obj)
 }
+
 DimReduce <- function(obj, n=NULL,span=NULL,num=NULL,scale=NULL) {
   library(irlba)
   data<-obj@smat
@@ -264,6 +265,7 @@ DimReduce <- function(obj, n=NULL,span=NULL,num=NULL,scale=NULL) {
   return(obj)
 }
 
+
 RunTSNE <- function(obj, nSV=NULL, ndims=NULL, perplexity =NULL,seed.use=NULL) {
   
   library(Rtsne)
@@ -291,29 +293,17 @@ RunTSNE <- function(obj, nSV=NULL, ndims=NULL, perplexity =NULL,seed.use=NULL) {
   decomp_data  <- obj@reductions$SVD@x 
   pca.var <- obj@reductions$SVD@sdev
   set.seed(seed.use)
-  # cut <- pca.var[1]/sum(pca.var[1:nSV])
-  # if (cut > 0.35){
-  #   svd_tsne = decomp_data[,2:nSV]
-  # }else{
-  #   svd_tsne = decomp_data[,1:nSV]
-  # }
-  # cut <- pca.var[1]/sum(pca.var[1:nSV])
-  # if (cut > 0.33){
-  #   svd_tsne = decomp_data[,2:nSV]
-  # }else{
-  #   svd_tsne = decomp_data[,1:nSV]
-  # }
-  
+    
   cut <- pca.var[1]/pca.var[2]
   if (cut > 2){
     svd_tsne = decomp_data[,2:nSV]
   }else{
     svd_tsne = decomp_data[,1:nSV]
   }
-  
-  # set.seed(0)
-  # print(dim(data)[2])
-  data<-obj@reductions$SVD@x
+  print(dim(svd_tsne)[2])
+
+  set.seed(10)
+  data <- svd_tsne
   tsne_out = Rtsne(data, pca=F, dims = ndims, perplexity = perplexity,
                    theta = 0.5, check_duplicates = F, max_iter = 500)
   tsne_out <- tsne_out$Y
@@ -336,6 +326,7 @@ RunTSNE <- function(obj, nSV=NULL, ndims=NULL, perplexity =NULL,seed.use=NULL) {
   return(obj) 
   
 }
+
 RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV) {
   
   if(missing(rho_cutoff)){
@@ -349,19 +340,23 @@ RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV) {
     nSV<-15}
   
   if (missing(tsne_3D)) {
-    decomp_data  <- obj@reductions$SVD@x
-    pca.var <- obj@reductions$SVD@sdev
-    # PCAtsne_vd = decomp_data[,1:nSV]
-    cut <- pca.var[1]/sum(pca.var[1:nSV])
-    if (cut > 0.35){
-      PCAtsne_vd = decomp_data[,2:nSV]
-    }else{
-      PCAtsne_vd = decomp_data[,1:nSV]
-    }
     
-    set.seed(0)
-    data <- PCAtsne_vd
-    tsne_out = Rtsne(data, pca=F, dims = 3, perplexity = 30,
+  decomp_data  <- obj@reductions$SVD@x 
+  pca.var <- obj@reductions$SVD@sdev
+  set.seed(seed.use)
+    
+  cut <- pca.var[1]/pca.var[2]
+  if (cut > 2){
+    svd_tsne = decomp_data[,2:nSV]
+  }else{
+    svd_tsne = decomp_data[,1:nSV]
+  }
+  print(dim(svd_tsne)[2])
+
+  set.seed(10)
+  
+  data <- svd_tsne
+   tsne_out = Rtsne(data, pca=F, dims = 3, perplexity = 30,
                      theta = 0.5, check_duplicates = TRUE, max_iter = 500)
     tsne_3D <- tsne_out$Y} else {
       tsne_3D <- tsne_3D
@@ -429,7 +424,7 @@ Visualization_2D <- function(obj,reductions='TSNE' ,anno=NULL,fileName=NULL,colo
   p +  geom_point(aes(color = as.factor(sample_state)), size = 0.5, position=position_jitter(width=0.5,height=.25)) + 
     scale_color_manual(values=tsnecols) +
     labs(x = x, y = y, title="2D visualization",
-         colour = "Cluster") +
+         colour = fileName) +
     theme(legend.position = "right", legend.key.height = grid::unit(0.35, "in")) + 
     theme(legend.key = element_blank()) + 
     theme(panel.background = element_rect(fill = "white", colour = "black"))
@@ -636,8 +631,22 @@ if(convert_mat==TRUE){
 ### gene_matrix = MapBin2Gene(Bmat = binary_matrix,Org = 'manual', OrgDb = 'org.Mm.eg.db', TxDb = TxDb, convert_mat = TRUE, TSS_window = 3000)
 RunUMAP<-function(obj,dims=2){
   library(uwot)
-  svd<-obj@reductions$SVD@x
-  umaps  <- uwot::umap(svd,n_components = dims) 
+ decomp_data  <- obj@reductions$SVD@x 
+  pca.var <- obj@reductions$SVD@sdev
+  set.seed(seed.use)
+    
+  cut <- pca.var[1]/pca.var[2]
+  if (cut > 2){
+    svd_tsne = decomp_data[,2:nSV]
+  }else{
+    svd_tsne = decomp_data[,1:nSV]
+  }
+  print(dim(svd_tsne)[2])
+
+  set.seed(10)
+  
+  data <- svd_tsne
+  umaps  <- uwot::umap(data,n_components = dims) 
   if(dims==2){
     colnames(umaps)=c('UMAP_1','UMAP_2')}
   if(dims==3){colnames(umaps)=c('UMAP_1','UMAP_2','UMAP_3')}
@@ -854,7 +863,7 @@ RunChromVAR <- function(
 
 
 ### ****** 2. a function to visualize the ATAC signals (gene levels) in UMAP/tSNE embeddings  --------
-PlotSelectGenesATAC = function(obj,gene2plot = c("Snap25", "Gad2", "Apoe"), 
+PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe"), 
                                reduction = 'TSNE',
                                ncol = NULL){
   plot_theme <- theme(plot.title = element_text(hjust = 0.5, size = 20),
@@ -1174,7 +1183,7 @@ FindDAR <- function(obj, test_clust,out_dir=NULL){
 
 plotTrajectory <- function(obj,anno=NULL,color=NULL) {
   if (is.null(anno)) {
-    anno <- obj@metaData$cell_type
+    anno <- obj@metaData$cluster
   } else {
     anno <- eval(parse(text =paste0('obj@metaData$',anno) ))
   }
@@ -1239,10 +1248,23 @@ RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim
   } else {
     gamma <- gamma
   }
-  
+    
+  decomp_data  <- obj@reductions$SVD@x 
+  pca.var <- obj@reductions$SVD@sdev
+  set.seed(seed.use)
+    
+  cut <- pca.var[1]/pca.var[2]
+  if (cut > 2){
+    svd_tsne = decomp_data[,2:nSV]
+  }else{
+    svd_tsne = decomp_data[,1:nSV]
+  }
+  print(dim(svd_tsne)[2])
+
   library(Rtsne)
   set.seed(10)
-  tsne_out = Rtsne(obj@reductions$SVD@x[,1:nSV], pca=F, dims =3 , perplexity = 30,
+  data <- svd_tsne
+  tsne_out = Rtsne(data, pca=F, dims =5 , perplexity = 30,
                    theta = 0.5, check_duplicates = TRUE, max_iter = 500)
   data <- tsne_out$Y
   
