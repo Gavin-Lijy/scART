@@ -35,6 +35,7 @@ CreatescART=function(data,barcode,bins,metadata){
   library(textTinyR)
   barcode<-as.character(barcode)
   obj<-new('scART')
+  data<-as(data,'dgCMatrix')
   if(missing(metadata)){
     depth<-sparse_Sums(data)
     obj@metaData<-data.frame(depth)
@@ -60,7 +61,8 @@ CreatescART=function(data,barcode,bins,metadata){
     return(x)
   }
   obj@bmat$binary<-binarize(data,threshold = 0)
-  
+  nCounts<-colSums(obj@bmat$binary)
+  obj@metaData$nCounts<-nCounts
   return(obj)
 }
 
@@ -477,7 +479,8 @@ MapBin2Gene = function(Bmat = NULL, ### the cell-by-bin matrix
                        TxDb = NULL, ### if Org = manual, you should input the TxDb defined by yourself 
                        convert_mat = TRUE, ### whether convert bin-by-cell matrix to cell-by
                        TSS_window = 3000 ### the window size around TSS to define the promoter 
-){Bmat<-obj@bmat
+){
+  Bmat<-obj@bmat$filter
 
 options(stringsAsFactors = F)
 
@@ -1737,7 +1740,7 @@ Read_snap<-function(file,sample="atac"){
   return(art)
 }
 
-#' Convert a snap object to a seurat object
+#' Convert a scART object to a seurat object
 #'
 #' @param obj A snap object.
 #' @param eigs.dims A vector of the dimensions to use.
@@ -1747,7 +1750,7 @@ Read_snap<-function(file,sample="atac"){
 #'
 #' @export
 
-Art2snap <- function(
+Art2seurat <- function(
   obj, 
   eigs.dims=1:20,
   input.mat ="bmat",
@@ -1836,7 +1839,7 @@ Art2snap <- function(
 }
 
 
-#' Convert a snap object to a seurat object
+#' Convert a scART object to a snap object
 #'
 #' @param obj A snap object.
 #' @param eigs.dims A vector of the dimensions to use.
