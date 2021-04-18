@@ -1513,19 +1513,18 @@ PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1566", "GSX2"),
   # if(sum(!is.data.frame(Gmat))>0){
   #   Gmat = as.data.frame(Gmat)
   # }
-  name<-lapply(rownames(Gmat), function(x) {strsplit(x,split = '_')})
   
-  name<-data.frame(matrix(unlist(name),ncol = 2, byrow=T),stringsAsFactors=FALSE)
   lapply(TF2plot, function(i){
-    if(!(i %in% name$X2))
+    if(length(grep(i,rownames(Gmat)))==0)
     {message(paste0(i, ' doesn not exist' ))}
   } )
-  if (sum(TF2plot%in% name$X2)==0){stop('no TF is found')}
-  mat2plot =  Gmat[name$X2%in%TF2plot,]
+  if (length(grep(paste(TF2plot,collapse = '|'),rownames(Gmat)))==0)
+    {stop('no TF is found')}
+  mat2plot =  Gmat[grep(paste(TF2plot,collapse = '|'),rownames(Gmat)),]
   
   if(mode(mat2plot)=='numeric'){ 
     mat2plot=as.data.frame(t(mat2plot))
-    rownames(mat2plot)<-name$X2[  name$X2%in%TF2plot ]}
+    rownames(mat2plot)<-rownames(Gmat)[grep(paste(TF2plot,collapse = '|'),rownames(Gmat))]}
   TF2plot = rownames(mat2plot)
   
   if(length(TF2plot)>9){
