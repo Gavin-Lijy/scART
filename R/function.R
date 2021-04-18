@@ -1,14 +1,15 @@
-
-# library(methods)
-# methods::setClassUnion("MatrixOrmatrix", c("Matrix", "matrix"))
-# setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",bmat = "list",smat='Matrix',gmat = "Matrix",
-#                             mmat = "Matrix",reductions = "list",trajectory='MatrixOrmatrix' ))
-# 
-# .valid.scART.barcode <- function(object)
-# {
-#   if(length(object@barcode) != nrow(object@metaData)){
-#     return("slot 'barcode' have different length from 'metaData'")		
-#   }
+@@ -1,1984 +0,0 @@
+  
+  # library(methods)
+  # methods::setClassUnion("MatrixOrmatrix", c("Matrix", "matrix"))
+  # setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",bmat = "list",smat='Matrix',gmat = "Matrix",
+  #                             mmat = "Matrix",reductions = "list",trajectory='MatrixOrmatrix' ))
+  # 
+  # .valid.scART.barcode <- function(object)
+  # {
+  #   if(length(object@barcode) != nrow(object@metaData)){
+  #     return("slot 'barcode' have different length from 'metaData'")		
+  #   }
 #   NULL
 # }
 # 
@@ -292,7 +293,7 @@ RunTSNE <- function(obj, nSV=NULL, ndims=NULL, perplexity =NULL,seed.use=NULL) {
   decomp_data  <- obj@reductions$SVD@x 
   pca.var <- obj@reductions$SVD@sdev
   set.seed(seed.use)
-    
+  
   cut <- pca.var[1]/pca.var[2]
   if (cut > 2){
     svd_tsne = decomp_data[,2:nSV]
@@ -300,7 +301,7 @@ RunTSNE <- function(obj, nSV=NULL, ndims=NULL, perplexity =NULL,seed.use=NULL) {
     svd_tsne = decomp_data[,1:nSV]
   }
   print(dim(svd_tsne)[2])
-
+  
   set.seed(10)
   data <- svd_tsne
   tsne_out = Rtsne(data, pca=F, dims = ndims, perplexity = perplexity,
@@ -340,21 +341,21 @@ RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV) {
   
   if (missing(tsne_3D)) {
     
-  decomp_data  <- obj@reductions$SVD@x 
-  pca.var <- obj@reductions$SVD@sdev
+    decomp_data  <- obj@reductions$SVD@x 
+    pca.var <- obj@reductions$SVD@sdev
     
-  cut <- pca.var[1]/pca.var[2]
-  if (cut > 2){
-    svd_tsne = decomp_data[,2:nSV]
-  }else{
-    svd_tsne = decomp_data[,1:nSV]
-  }
-  print(dim(svd_tsne)[2])
-
-  set.seed(10)
-  
-  data <- svd_tsne
-   tsne_out = Rtsne(data, pca=F, dims = 3, perplexity = 30,
+    cut <- pca.var[1]/pca.var[2]
+    if (cut > 2){
+      svd_tsne = decomp_data[,2:nSV]
+    }else{
+      svd_tsne = decomp_data[,1:nSV]
+    }
+    print(dim(svd_tsne)[2])
+    
+    set.seed(10)
+    
+    data <- svd_tsne
+    tsne_out = Rtsne(data, pca=F, dims = 3, perplexity = 30,
                      theta = 0.5, check_duplicates = TRUE, max_iter = 500)
     tsne_3D <- tsne_out$Y} else {
       tsne_3D <- tsne_3D
@@ -426,7 +427,7 @@ Visualization_2D <- function(obj,reductions='TSNE' ,anno=NULL,fileName=NULL,colo
     theme(legend.position = "right", legend.key.height = grid::unit(0.35, "in")) + 
     theme(legend.key = element_blank()) + 
     theme(panel.background = element_rect(fill = "white", colour = "black"))
- 
+  
 }
 
 
@@ -630,10 +631,10 @@ if(convert_mat==TRUE){
 ### gene_matrix = MapBin2Gene(Bmat = binary_matrix,Org = 'manual', OrgDb = 'org.Mm.eg.db', TxDb = TxDb, convert_mat = TRUE, TSS_window = 3000)
 RunUMAP<-function(obj,dims=2,seed.use=10,nSV=20){
   library(uwot)
- decomp_data  <- obj@reductions$SVD@x 
+  decomp_data  <- obj@reductions$SVD@x 
   pca.var <- obj@reductions$SVD@sdev
   set.seed(seed.use)
-    
+  
   cut <- pca.var[1]/pca.var[2]
   if (cut > 2){
     svd_tsne = decomp_data[,2:nSV]
@@ -641,8 +642,8 @@ RunUMAP<-function(obj,dims=2,seed.use=10,nSV=20){
     svd_tsne = decomp_data[,1:nSV]
   }
   print(dim(svd_tsne)[2])
-
-
+  
+  
   
   data <- svd_tsne
   umaps  <- uwot::umap(data,n_components = dims) 
@@ -903,7 +904,7 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe",'BCL9
   #   Gmat = as.data.frame(Gmat)
   # }
   lapply(gene2plot, function(i){if(!(i %in% rownames(Gmat) ))
-    {message(paste0(i, ' doesn not exist' ))}} )
+  {message(paste0(i, ' doesn not exist' ))}} )
   if (sum(gene2plot%in%rownames(Gmat))==0){stop('no gene is found')}
   mat2plot =  Gmat[rownames(Gmat)%in%gene2plot,]
   if(mode(mat2plot)=='numeric'){ 
@@ -1277,10 +1278,10 @@ RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim
   } else {
     gamma <- gamma
   }
-
+  
   decomp_data  <- obj@reductions$SVD@x 
   pca.var <- obj@reductions$SVD@sdev
-    
+  
   cut <- pca.var[1]/pca.var[2]
   if (cut > 2){
     svd_tsne = decomp_data[,2:nSV]
@@ -1288,7 +1289,7 @@ RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim
     svd_tsne = decomp_data[,1:nSV]
   }
   print(dim(svd_tsne)[2])
-
+  
   library(Rtsne)
   set.seed(10)
   data <- svd_tsne
@@ -1467,7 +1468,7 @@ MapBin2Gene = function(obj, ### the cell-by-bin matrix
   }))
   rownames(mat2plot) = gene2use
   cat(">>", nrow(mat2plot), "genes with promoter ATAC bins retained after filtering ...\t\t\t", format(Sys.time(),  "%Y-%m-%d %X"), "\n")  
- mat2plot<- t(t(mat2plot)/art@metaData$nCounts)*1000000
+  mat2plot<- t(t(mat2plot)/art@metaData$nCounts)*1000000
   obj@gmat<-as(as.matrix(mat2plot), "dgCMatrix")
   return(obj)
 }
@@ -1517,11 +1518,11 @@ PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1566", "GSX2"),
   name<-data.frame(matrix(unlist(name),ncol = 2, byrow=T),stringsAsFactors=FALSE)
   lapply(TF2plot, function(i){
     if(!(i %in% name$X2))
-  {message(paste0(i, ' doesn not exist' ))}
+    {message(paste0(i, ' doesn not exist' ))}
   } )
   if (sum(TF2plot%in% name$X2)==0){stop('no TF is found')}
   mat2plot =  Gmat[name$X2%in%TF2plot,]
-
+  
   if(mode(mat2plot)=='numeric'){ 
     mat2plot=as.data.frame(t(mat2plot))
     rownames(mat2plot)<-name$X2[  name$X2%in%TF2plot ]}
@@ -1884,9 +1885,9 @@ art2seurat <- function(
   
   colnames(x = pca.use) <- paste0("DC_", eigs.dims);
   seurat.atac[["SnapATAC"]] <- new(Class = "DimReduc", cell.embeddings =pca.use,
-                                 feature.loadings = matrix(0,0,0), feature.loadings.projected = matrix(0,0,0),
-                                 assay.used ="ATAC", stdev = rep(1,length(eigs.dims)), 
-                                 key ="DC_", jackstraw = new(Class = "JackStrawData"), misc = list()) 
+                                   feature.loadings = matrix(0,0,0), feature.loadings.projected = matrix(0,0,0),
+                                   assay.used ="ATAC", stdev = rep(1,length(eigs.dims)), 
+                                   key ="DC_", jackstraw = new(Class = "JackStrawData"), misc = list()) 
   
   DefaultAssay(seurat.atac) <- "ACTIVITY"
   if(norm){ seurat.atac <- NormalizeData(seurat.atac)  }
@@ -1980,5 +1981,4 @@ art2snap <- function(
   # if(scale){pbmc.atac <- ScaleData(pbmc.atac)} 
   return(snap)
 }
-
 
