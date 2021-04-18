@@ -35,13 +35,10 @@ CreatescART=function(data,barcode,bins,metadata){
   library(textTinyR)
   barcode<-as.character(barcode)
   obj<-new('scART')
-  data<-as(data,'dgCMatrix')
   if(missing(metadata)){
-    depth<-sparse_Sums(data)
+    depth <- sparse_Sums(data, rowSums = F)
     obj@metaData<-data.frame(depth)
     rownames(obj@metaData)<-barcode
-    library(textTinyR)
-    obj@metaData$depth<- sparse_Sums(data)
   }else{obj@metaData<-metadata}
   
   obj@bmat=list(NULL,NULL,NULL,NULL,NULL)
@@ -61,7 +58,7 @@ CreatescART=function(data,barcode,bins,metadata){
     return(x)
   }
   obj@bmat$binary<-binarize(data,threshold = 0)
-  nCounts<-colSums(obj@bmat$binary)
+  nCounts<-sparse_Sums(data, rowSums = F)
   obj@metaData$nCounts<-nCounts
   return(obj)
 }
@@ -345,7 +342,6 @@ RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV) {
     
   decomp_data  <- obj@reductions$SVD@x 
   pca.var <- obj@reductions$SVD@sdev
-  set.seed(seed.use)
     
   cut <- pca.var[1]/pca.var[2]
   if (cut > 2){
@@ -430,6 +426,7 @@ Visualization_2D <- function(obj,reductions='TSNE' ,anno=NULL,fileName=NULL,colo
     theme(legend.position = "right", legend.key.height = grid::unit(0.35, "in")) + 
     theme(legend.key = element_blank()) + 
     theme(panel.background = element_rect(fill = "white", colour = "black"))
+ 
 }
 
 
@@ -479,8 +476,7 @@ MapBin2Gene = function(Bmat = NULL, ### the cell-by-bin matrix
                        TxDb = NULL, ### if Org = manual, you should input the TxDb defined by yourself 
                        convert_mat = TRUE, ### whether convert bin-by-cell matrix to cell-by
                        TSS_window = 3000 ### the window size around TSS to define the promoter 
-){
-  Bmat<-obj@bmat$filter
+){Bmat<-obj@bmat
 
 options(stringsAsFactors = F)
 
@@ -632,7 +628,7 @@ if(convert_mat==TRUE){
 ### using manually constructed TxDb:
 ### TxDb = makeTxDbFromGFF(gtf_file);
 ### gene_matrix = MapBin2Gene(Bmat = binary_matrix,Org = 'manual', OrgDb = 'org.Mm.eg.db', TxDb = TxDb, convert_mat = TRUE, TSS_window = 3000)
-RunUMAP<-function(obj,dims=2){
+RunUMAP<-function(obj,dims=2,seed.use=10,nSV=20){
   library(uwot)
  decomp_data  <- obj@reductions$SVD@x 
   pca.var <- obj@reductions$SVD@sdev
@@ -646,7 +642,7 @@ RunUMAP<-function(obj,dims=2){
   }
   print(dim(svd_tsne)[2])
 
-  set.seed(10)
+
   
   data <- svd_tsne
   umaps  <- uwot::umap(data,n_components = dims) 
@@ -866,7 +862,7 @@ RunChromVAR <- function(
 
 
 ### ****** 2. a function to visualize the ATAC signals (gene levels) in UMAP/tSNE embeddings  --------
-PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe"), 
+PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe",'BCL9'), 
                                reduction = 'TSNE',
                                ncol = NULL){
   plot_theme <- theme(plot.title = element_text(hjust = 0.5, size = 20),
@@ -906,10 +902,14 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe"),
   # if(sum(!is.data.frame(Gmat))>0){
   #   Gmat = as.data.frame(Gmat)
   # }
+  lapply(gene2plot, function(i){if(!(i %in% rownames(Gmat) ))
+    {message(paste0(i, ' doesn not exist' ))}} )
+  if (sum(gene2plot%in%rownames(Gmat))==0){stop('no gene is found')}
   mat2plot =  Gmat[rownames(Gmat)%in%gene2plot,]
   if(mode(mat2plot)=='numeric'){ 
     mat2plot=as.data.frame(t(mat2plot))
-    rownames(mat2plot)<-gene2plot}
+    
+    rownames(mat2plot)<-rownames(Gmat)[rownames(Gmat)%in%gene2plot]}
   gene2plot = rownames(mat2plot)
   
   if(length(gene2plot)>9){
@@ -941,58 +941,84 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe"),
                     }
                   })
   
+  
   if (is.null(x = ncol)) {
     ncol <- 2
-    if (length(x = gene2plot) == 1) {
+    if (length(x = TF2plot) == 1) {
       ncol <- 1
     }
-    if (length(x = gene2plot) > 4) {
+    if (length(x = TF2plot) > 4) {
       ncol <- 3
     }
   }
   
-  if(length(gene2plot)==1){
+  if(length(TF2plot)==1){
+    p=p.list[[1]]
     print(p.list[[1]])
   }
-  if(length(gene2plot)==2){
+  if(length(TF2plot)==2){
+    p=plot_grid(p.list[[1]], p.list[[2]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]], ncol=ncol))
   }
-  if(length(gene2plot)==3){
+  if(length(TF2plot)==3){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]], ncol=ncol))
   }
-  if(length(gene2plot)==4){
+  if(length(TF2plot)==4){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]], ncol=ncol))
   }
-  if(length(gene2plot)==5){
+  if(length(TF2plot)==5){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]], p.list[[5]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]], p.list[[5]], ncol=ncol))
   }
-  if(length(gene2plot)==6){
+  if(length(TF2plot)==6){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]],
                     p.list[[5]], p.list[[6]], ncol=ncol))
   }
-  if(length(gene2plot)==7){
+  if(length(TF2plot)==7){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]],
+                p.list[[7]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]],
                     p.list[[5]], p.list[[6]],
                     p.list[[7]], ncol=ncol))
   }
-  if(length(gene2plot)==8){
+  if(length(TF2plot)==8){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]],
+                p.list[[7]], p.list[[8]],ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]],
                     p.list[[5]], p.list[[6]],
                     p.list[[7]], p.list[[8]],ncol=ncol))
   }
-  if(length(gene2plot)==9){
+  if(length(TF2plot)==9){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]],
+                p.list[[7]], p.list[[8]],
+                p.list[[9]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]],
                     p.list[[5]], p.list[[6]],
                     p.list[[7]], p.list[[8]],
                     p.list[[9]], ncol=ncol))
   }
+  return(p)
 }
 mcesApply <- function(X, MARGIN, FUN, cores=1, ...) {
   parent <- environment(FUN)
@@ -1251,10 +1277,9 @@ RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim
   } else {
     gamma <- gamma
   }
-    
+
   decomp_data  <- obj@reductions$SVD@x 
   pca.var <- obj@reductions$SVD@sdev
-  set.seed(seed.use)
     
   cut <- pca.var[1]/pca.var[2]
   if (cut > 2){
@@ -1442,12 +1467,12 @@ MapBin2Gene = function(obj, ### the cell-by-bin matrix
   }))
   rownames(mat2plot) = gene2use
   cat(">>", nrow(mat2plot), "genes with promoter ATAC bins retained after filtering ...\t\t\t", format(Sys.time(),  "%Y-%m-%d %X"), "\n")  
- mat2plot<- t(t(mat2plot)/colSums(obj@bmat$filter))*1000000
+ mat2plot<- t(t(mat2plot)/art@metaData$nCounts)*1000000
   obj@gmat<-as(as.matrix(mat2plot), "dgCMatrix")
   return(obj)
 }
 
-PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1", "DLX6"), 
+PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1566", "GSX2"), 
                        reduction = 'TSNE',
                        ncol = NULL){
   plot_theme <- theme(plot.title = element_text(hjust = 0.5, size = 20),
@@ -1490,11 +1515,16 @@ PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1", "DLX6"),
   name<-lapply(rownames(Gmat), function(x) {strsplit(x,split = '_')})
   
   name<-data.frame(matrix(unlist(name),ncol = 2, byrow=T),stringsAsFactors=FALSE)
-  
+  lapply(TF2plot, function(i){
+    if(!(i %in% name$X2))
+  {message(paste0(i, ' doesn not exist' ))}
+  } )
+  if (sum(TF2plot%in% name$X2)==0){stop('no TF is found')}
   mat2plot =  Gmat[name$X2%in%TF2plot,]
+
   if(mode(mat2plot)=='numeric'){ 
     mat2plot=as.data.frame(t(mat2plot))
-    rownames(mat2plot)<-TF2plot}
+    rownames(mat2plot)<-name$X2[  name$X2%in%TF2plot ]}
   TF2plot = rownames(mat2plot)
   
   if(length(TF2plot)>9){
@@ -1526,6 +1556,7 @@ PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1", "DLX6"),
                     }
                   })
   
+  
   if (is.null(x = ncol)) {
     ncol <- 2
     if (length(x = TF2plot) == 1) {
@@ -1537,158 +1568,183 @@ PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1", "DLX6"),
   }
   
   if(length(TF2plot)==1){
+    p=p.list[[1]]
     print(p.list[[1]])
   }
   if(length(TF2plot)==2){
+    p=plot_grid(p.list[[1]], p.list[[2]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]], ncol=ncol))
   }
   if(length(TF2plot)==3){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]], ncol=ncol))
   }
   if(length(TF2plot)==4){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]], ncol=ncol))
   }
   if(length(TF2plot)==5){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]], p.list[[5]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]], p.list[[5]], ncol=ncol))
   }
   if(length(TF2plot)==6){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]],
                     p.list[[5]], p.list[[6]], ncol=ncol))
   }
   if(length(TF2plot)==7){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]],
+                p.list[[7]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]],
                     p.list[[5]], p.list[[6]],
                     p.list[[7]], ncol=ncol))
   }
   if(length(TF2plot)==8){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]],
+                p.list[[7]], p.list[[8]],ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]],
                     p.list[[5]], p.list[[6]],
                     p.list[[7]], p.list[[8]],ncol=ncol))
   }
   if(length(TF2plot)==9){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]],
+                p.list[[7]], p.list[[8]],
+                p.list[[9]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]],
                     p.list[[5]], p.list[[6]],
                     p.list[[7]], p.list[[8]],
                     p.list[[9]], ncol=ncol))
   }
+  return(p)
 }
 
 
-Read_10X <- function(
-  data.dir,
-  cell.column = 1,
-  unique.features = TRUE,
-  strip.suffix = FALSE) {
-  for (i in seq_along(along.with = data.dir)) {
-    run <- data.dir[i]
-    if (!dir.exists(paths = run)) {
-      stop("Directory provided does not exist")
-    }
-    barcode.loc <- file.path(run, 'barcodes.tsv')
-    peaks.loc <- file.path(run, 'peaks.bed')
-    matrix.loc <- file.path(run, 'matrix.mtx')
-    # Flag to indicate if this data is from CellRanger >= 3.0
-    
-    if (!file.exists(barcode.loc)) {
-      stop("Barcode file missing. Expecting ", basename(path = barcode.loc))
-    }
-    if (!file.exists(peaks.loc) ) {
-      stop("Peaks name or features file missing. Expecting ", basename(path = features.loc))
-    }
-    if (!file.exists(matrix.loc)) {
-      stop("Expression matrix file missing. Expecting ", basename(path = matrix.loc))
-    }
-    library(Matrix)
-    data <- as(readMM(file = matrix.loc),'dgCMatrix')
-    cell.barcodes <- read.table(file = barcode.loc, header = FALSE, row.names = NULL)
-    
-    
-    peaks <- read.delim(
-      file = peaks.loc,
-      header = FALSE, stringsAsFactors = FALSE)
-    
-    colnames(data)<-cell.barcodes$V1
-    rownames(data)<-paste0(peaks$V1,'-',peaks$V2,'-',peaks$V3)
-    art<-CreatescART(data)
-    return(art)
-  }
-}
-
-
-Read_10X_h5 <- function(filename, use.names = TRUE, unique.features = TRUE) {
-  if (!requireNamespace('hdf5r', quietly = TRUE)) {
-    stop("Please install hdf5r to read HDF5 files")
-  }
-  if (!file.exists(filename)) {
-    stop("File not found")
-  }
-  infile <- hdf5r::H5File$new(filename = filename, mode = 'r')
-  genomes <- names(x = infile)
-  output <- list()
-  if (hdf5r::existsGroup(infile, 'matrix')) {
-    # cellranger version 3
-    if (use.names) {
-      feature_slot <- 'features/name'
-    } else {
-      feature_slot <- 'features/id'
-    }
-  } else {
-    if (use.names) {
-      feature_slot <- 'gene_names'
-    } else {
-      feature_slot <- 'genes'
-    }
-  }
-  for (genome in genomes) {
-    counts <- infile[[paste0(genome, '/data')]]
-    indices <- infile[[paste0(genome, '/indices')]]
-    indptr <- infile[[paste0(genome, '/indptr')]]
-    shp <- infile[[paste0(genome, '/shape')]]
-    features <- infile[[paste0(genome, '/', feature_slot)]][]
-    barcodes <- infile[[paste0(genome, '/barcodes')]]
-    sparse.mat <- sparseMatrix(
-      i = indices[] + 1,
-      p = indptr[],
-      x = as.numeric(x = counts[]),
-      dims = shp[],
-      giveCsparse = FALSE
-    )
-    if (unique.features) {
-      features <- make.unique(names = features)
-    }
-    rownames(x = sparse.mat) <- features
-    colnames(x = sparse.mat) <- barcodes[]
-    sparse.mat <- as(object = sparse.mat, Class = 'dgCMatrix')
-    # Split v3 multimodal
-    if (infile$exists(name = paste0(genome, '/features'))) {
-      types <- infile[[paste0(genome, '/features/feature_type')]][]
-      types.unique <- unique(x = types)
-      if (length(x = types.unique) > 1) {
-        message("Genome ", genome, " has multiple modalities, returning a list of matrices for this genome")
-        sparse.mat <- sapply(
-          X = types.unique,
-          FUN = function(x) {
-            return(sparse.mat[which(x = types == x), ])
-          },
-          simplify = FALSE,
-          USE.NAMES = TRUE
-        )
-      }
-    }
-    output[[genome]] <- sparse.mat
-  }
-  infile$close_all()
-  output$matrix@Dimnames[[1]]=gsub(':','-', output$matrix@Dimnames[[1]])
-  obj<-CreatescART(output$matrix)
-  return(obj)
-}
+# Read_10X <- function(
+#   data.dir,
+#   cell.column = 1,
+#   unique.features = TRUE,
+#   strip.suffix = FALSE) {
+#   for (i in seq_along(along.with = data.dir)) {
+#     run <- data.dir[i]
+#     if (!dir.exists(paths = run)) {
+#       stop("Directory provided does not exist")
+#     }
+#     barcode.loc <- file.path(run, 'barcodes.tsv')
+#     peaks.loc <- file.path(run, 'peaks.bed')
+#     matrix.loc <- file.path(run, 'matrix.mtx')
+#     # Flag to indicate if this data is from CellRanger >= 3.0
+#     
+#     if (!file.exists(barcode.loc)) {
+#       stop("Barcode file missing. Expecting ", basename(path = barcode.loc))
+#     }
+#     if (!file.exists(peaks.loc) ) {
+#       stop("Peaks name or features file missing. Expecting ", basename(path = features.loc))
+#     }
+#     if (!file.exists(matrix.loc)) {
+#       stop("Expression matrix file missing. Expecting ", basename(path = matrix.loc))
+#     }
+#     library(Matrix)
+#     data <- as(readMM(file = matrix.loc),'dgCMatrix')
+#     cell.barcodes <- read.table(file = barcode.loc, header = FALSE, row.names = NULL)
+#     
+#     
+#     peaks <- read.delim(
+#       file = peaks.loc,
+#       header = FALSE, stringsAsFactors = FALSE)
+#     
+#     colnames(data)<-cell.barcodes$V1
+#     rownames(data)<-paste0(peaks$V1,'-',peaks$V2,'-',peaks$V3)
+#     art<-CreatescART(data)
+#     return(art)
+#   }
+# }
+# 
+# 
+# Read_10X_h5 <- function(filename, use.names = TRUE, unique.features = TRUE) {
+#   if (!requireNamespace('hdf5r', quietly = TRUE)) {
+#     stop("Please install hdf5r to read HDF5 files")
+#   }
+#   if (!file.exists(filename)) {
+#     stop("File not found")
+#   }
+#   infile <- hdf5r::H5File$new(filename = filename, mode = 'r')
+#   genomes <- names(x = infile)
+#   output <- list()
+#   if (hdf5r::existsGroup(infile, 'matrix')) {
+#     # cellranger version 3
+#     if (use.names) {
+#       feature_slot <- 'features/name'
+#     } else {
+#       feature_slot <- 'features/id'
+#     }
+#   } else {
+#     if (use.names) {
+#       feature_slot <- 'gene_names'
+#     } else {
+#       feature_slot <- 'genes'
+#     }
+#   }
+#   for (genome in genomes) {
+#     counts <- infile[[paste0(genome, '/data')]]
+#     indices <- infile[[paste0(genome, '/indices')]]
+#     indptr <- infile[[paste0(genome, '/indptr')]]
+#     shp <- infile[[paste0(genome, '/shape')]]
+#     features <- infile[[paste0(genome, '/', feature_slot)]][]
+#     barcodes <- infile[[paste0(genome, '/barcodes')]]
+#     sparse.mat <- sparseMatrix(
+#       i = indices[] + 1,
+#       p = indptr[],
+#       x = as.numeric(x = counts[]),
+#       dims = shp[],
+#       giveCsparse = FALSE
+#     )
+#     if (unique.features) {
+#       features <- make.unique(names = features)
+#     }
+#     rownames(x = sparse.mat) <- features
+#     colnames(x = sparse.mat) <- barcodes[]
+#     sparse.mat <- as(object = sparse.mat, Class = 'dgCMatrix')
+#     # Split v3 multimodal
+#     if (infile$exists(name = paste0(genome, '/features'))) {
+#       types <- infile[[paste0(genome, '/features/feature_type')]][]
+#       types.unique <- unique(x = types)
+#       if (length(x = types.unique) > 1) {
+#         message("Genome ", genome, " has multiple modalities, returning a list of matrices for this genome")
+#         sparse.mat <- sapply(
+#           X = types.unique,
+#           FUN = function(x) {
+#             return(sparse.mat[which(x = types == x), ])
+#           },
+#           simplify = FALSE,
+#           USE.NAMES = TRUE
+#         )
+#       }
+#     }
+#     output[[genome]] <- sparse.mat
+#   }
+#   infile$close_all()
+#   output$matrix@Dimnames[[1]]=gsub(':','-', output$matrix@Dimnames[[1]])
+#   obj<-CreatescART(output$matrix)
+#   return(obj)
+# }
 
 Read_counts <- function(
   data.dir,
@@ -1740,7 +1796,7 @@ Read_snap<-function(file,sample="atac"){
   return(art)
 }
 
-#' Convert a scART object to a seurat object
+#' Convert a snap object to a seurat object
 #'
 #' @param obj A snap object.
 #' @param eigs.dims A vector of the dimensions to use.
@@ -1750,7 +1806,7 @@ Read_snap<-function(file,sample="atac"){
 #'
 #' @export
 
-Art2seurat <- function(
+art2seurat <- function(
   obj, 
   eigs.dims=1:20,
   input.mat ="bmat",
@@ -1820,26 +1876,26 @@ Art2seurat <- function(
   colnames(x = gmat.use) = paste0(obj@barcode);
   rownames(x = pca.use)  = paste0(obj@barcode);
   rownames(metaData.use) = paste0(obj@barcode);
-  pbmc.atac <- CreateSeuratObject(counts = data.use, assay = "ATAC");
-  pbmc.atac[["ACTIVITY"]] <- CreateAssayObject(counts = as.data.frame(gmat.use))
-  pbmc.atac <- AddMetaData(pbmc.atac, metadata = metaData.use);
-  pbmc.atac$tech <- "atac"
-  DefaultAssay(pbmc.atac) <- "ATAC";
+  seurat.atac <- CreateSeuratObject(counts = data.use, assay = "ATAC");
+  seurat.atac[["ACTIVITY"]] <- CreateAssayObject(counts = as.data.frame(gmat.use))
+  seurat.atac <- AddMetaData(seurat.atac, metadata = metaData.use);
+  seurat.atac$tech <- "atac"
+  DefaultAssay(seurat.atac) <- "ATAC";
   
   colnames(x = pca.use) <- paste0("DC_", eigs.dims);
-  pbmc.atac[["SnapATAC"]] <- new(Class = "DimReduc", cell.embeddings =pca.use,
+  seurat.atac[["SnapATAC"]] <- new(Class = "DimReduc", cell.embeddings =pca.use,
                                  feature.loadings = matrix(0,0,0), feature.loadings.projected = matrix(0,0,0),
                                  assay.used ="ATAC", stdev = rep(1,length(eigs.dims)), 
                                  key ="DC_", jackstraw = new(Class = "JackStrawData"), misc = list()) 
   
-  DefaultAssay(pbmc.atac) <- "ACTIVITY"
-  if(norm){ pbmc.atac <- NormalizeData(pbmc.atac)  }
-  if(scale){pbmc.atac <- ScaleData(pbmc.atac)}
-  return(pbmc.atac)
+  DefaultAssay(seurat.atac) <- "ACTIVITY"
+  if(norm){ seurat.atac <- NormalizeData(seurat.atac)  }
+  if(scale){seurat.atac <- ScaleData(seurat.atac)}
+  return(seurat.atac)
 }
 
 
-#' Convert a scART object to a snap object
+#' Convert a snap object to a seurat object
 #'
 #' @param obj A snap object.
 #' @param eigs.dims A vector of the dimensions to use.
@@ -1849,7 +1905,7 @@ Art2seurat <- function(
 #'
 #' @export
 
-Art2snap <- function(
+art2snap <- function(
   obj, 
   input.mat ="bmat"){
   cat("Epoch: checking input parameters ... \n", file = stderr())
