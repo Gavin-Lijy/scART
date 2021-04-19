@@ -1,4 +1,4 @@
-@@ -1,1984 +0,0 @@
+
   
   # library(methods)
   # methods::setClassUnion("MatrixOrmatrix", c("Matrix", "matrix"))
@@ -1786,13 +1786,16 @@ Read_counts <- function(
   }
 }
 
-Read_snap<-function(file,sample="atac"){
+Read_snap<-function(file,sample="atac",bin.size=NULL){
   library(SnapATAC)
+  if(is.null(bin.size)){stop('missing bins.size')}
   obj<-createSnap(file = file,sample = sample)
-  data<-demo.sp@bmat
+  obj<-addBmatToSnap(obj,bin.size = bin.size)
+  data<-t(obj@bmat)
   data@Dimnames[[1]] <- gsub(':','-',obj@feature$name) 
   data@Dimnames[[2]]<- obj@barcode
   art<-CreatescART(data)
+  
   return(art)
 }
 

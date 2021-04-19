@@ -22,10 +22,10 @@ install.packages(c("chromVAR","GenomicFeatures","GenomicRanges","motifmatchr","J
 
 Now, you are now ready to install scART:
 
-# source the function
-```{r}
-source('scART.R')
-source('function.R')
+# Load the library and data
+```R
+library(scART)
+data(scART_tutorail)
 ```
 
 # Creating the scART object
@@ -54,7 +54,7 @@ art <- SparseFilter(art, ncell=2, ncell2=0.8, ncell3=2, nbin=10)
 # Dimensionality reduction 
 ```{r include=FALSE}
 art <- RunSim(art)
-art <- DimReduce(art)
+art <- DimReduce(art, n=150, num=100, scale=F)
 ```
 ![dim](image/dim.png)
 
