@@ -1795,6 +1795,17 @@ Read_counts <- function(
   }
 }
 
+Snap2art<-function(snap){
+  counts=t(snap@bmat)
+  barcode=snap@barcode
+  meta=snap@metaData
+  pmat=snap@pmat
+  bins=snap@feature
+  art=CreatescART(data = counts,barcode = barcode,bins = bins)
+  art@pmat=snap@pmat
+  return(art)
+}
+
 Read_snap<-function(file,barcode,bin.size=NULL,sample="atac"){
   if (is.null(bin.size)) {
     bin.size <- 5000
@@ -2037,4 +2048,5 @@ art2snap <- function(
   # if(scale){pbmc.atac <- ScaleData(pbmc.atac)} 
   return(snap)
 }
+
 
