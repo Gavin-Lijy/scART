@@ -33,7 +33,7 @@ art <- Read_snap(file,barcode,sample=sample,bin.size=5000 )
 art <- RunImputation(art, k=1, ratio=1)
 art <- SparseFilter(art, ncell=5, ncell2=0.75, ncell3=2.5, nbin=10, genome='hg19')
 ```
-![dim](data/10X_pmsc/Standard Deviation of SVs.png)
+![dim](data/10X_pmsc/Standard Deviation of SVs-1619001716807.png)
 
 
 ## Dimensionality reduction 
