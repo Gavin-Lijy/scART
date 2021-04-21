@@ -1,6 +1,4 @@
-
-  
-  # library(methods)
+   # library(methods)
   # methods::setClassUnion("MatrixOrmatrix", c("Matrix", "matrix"))
   # setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",bmat = "list",smat='Matrix',gmat = "Matrix",
   #                             mmat = "Matrix",reductions = "list",trajectory='MatrixOrmatrix' ))
@@ -30,8 +28,8 @@ CreatescART=function(data,barcode,bins,metadata){
     stop("data is missing");
   }
   if(missing(barcode)||missing(bins)){
-    barcode<-colnames(data)
-    bins<-rownames(data)
+    barcode <- colnames(data)
+    bins <- rownames(data)
   }
   library(textTinyR)
   barcode<-as.character(barcode)
@@ -46,8 +44,10 @@ CreatescART=function(data,barcode,bins,metadata){
   names(obj@bmat)=c('raw','binary','imputation','filter','TF_IDF')
   obj@bmat$raw=data
   obj@barcode<-barcode
-  bins<-lapply(bins, function(x) {strsplit(x,split = '-')})
-  df<- data.frame(matrix(unlist(bins),ncol = 3, byrow=T),stringsAsFactors=FALSE)
+  # bins<-lapply(bins, function(x) {strsplit(x,split = '-')})
+  bins<-rownames(data)
+  bins_bed = do.call(rbind, strsplit(x = bins, split = '[:-]'))
+  df<- data.frame(bins_bed,stringsAsFactors=FALSE)
   colnames(df)<-c('chr','start','end') 
   library(GenomicRanges)
   features<-makeGRangesFromDataFrame(df)
@@ -108,12 +108,12 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   if(genome=='mm10'){system("wget http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz");
     library(GenomicRanges);
     black_list = read.table("mm10.blacklist.bed.gz");}
-  black_list.gr = GRanges(
+    black_list.gr = GRanges(
     black_list[,1], 
     IRanges(black_list[,2], black_list[,3])
   );
   idy = queryHits(findOverlaps(obj@feature, black_list.gr));
-  if(length(idy) > 0){raw<-raw[-idy,]}
+  if(length(idy) > 0){raw <- raw[-idy,]}
   
   
   if (is.null(ncell)) {
@@ -148,15 +148,15 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   pdf("Cell_Site_Distribution.pdf", width=10)    
   par(mfrow=c(1,2))
   options(repr.plot.width=4, repr.plot.height=4)
-  hist(log10(new_peaks+1),main="No. of Cells Each Site is Observed In",breaks=50,xlab="log10()")
-  abline(v=log10(ncell),lwd=2,col="indianred")
-  abline(v=log10(ncell2),lwd=2,col="indianred")
-  hist(log10(new_counts),main="Number of Sites Each Cell Uses",breaks=50)
-  abline(v=log10(npeak),lwd=2,col="indianred")
-  hist(scale(log10(new_peaks+1)),main="No. of Cells Each Site is Observed In",breaks=50,xlab="raw, scale(log10())")
-  abline(v=ncell3,lwd=2,col="indianred")
-  hist(scale(log10(new_peaks[new_peaks2 < ncell3]+1)),main="No. of Cells Each Site is Observed In",xlab="filter1,scale(log10())",breaks=50)
-  abline(v=ncell3,lwd=2,col="indianred")
+  hist(log10(new_peaks+1),main="No. of Cells Each Site is Observed In",breaks=50,xlab="log10, nCells")
+  # abline(v=log10(ncell),lwd=2,col="indianred")
+  # abline(v=log10(ncell2),lwd=2,col="indianred")
+  hist(log10(new_counts),main="Number of Sites Each Cell Uses",breaks=50,xlab="log10, nBins")
+  # abline(v=log10(npeak),lwd=2,col="indianred")
+  # hist(scale(log10(new_peaks+1)),main="No. of Cells Each Site is Observed In",breaks=50,xlab="raw, scale(log10())")
+  # abline(v=ncell3,lwd=2,col="indianred")
+  # hist(scale(log10(new_peaks[new_peaks2 < ncell3]+1)),main="No. of Cells Each Site is Observed In",xlab="filter1,scale(log10())",breaks=50)
+  # abline(v=ncell3,lwd=2,col="indianred")
   dev.off()
   
   ncounts2 <- ncounts[which(new_peaks2 < ncell3),]
@@ -164,12 +164,12 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   ncounts2 <- ncounts2[,new_counts >= npeak]
   ncounts <- ncounts2
   new_peaks = sparse_Sums(ncounts, rowSums = T)
-  pdf("Cell_Site_Distribution_last.pdf", width=10)    
-  par(mfrow=c(1,2))
-  options(repr.plot.width=4, repr.plot.height=4)
-  hist(log10(new_peaks+1),main="No. of Cells Each Site is Observed In",breaks=50,xlab="log10()")
-  hist(scale(log10(new_peaks+1)),main="No. of Cells Each Site is Observed In",breaks=50,xlab="scale(log10())")
-  dev.off()
+  # pdf("Cell_Site_Distribution_after_filter.pdf", width=10)    
+  # par(mfrow=c(1,2))
+  # options(repr.plot.width=4, repr.plot.height=4)
+  # hist(log10(new_peaks+1),main="No. of Cells Each Site is Observed In",breaks=50,xlab="log10()")
+  # hist(scale(log10(new_peaks+1)),main="No. of Cells Each Site is Observed In",breaks=50,xlab="scale(log10())")
+  # dev.off()
   obj@bmat$filter<-ncounts
   
   colname<-colnames(obj@metaData)
@@ -177,12 +177,16 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   rownames(obj@metaData)<-colnames(ncounts)
   colnames(obj@metaData)<-colname
   obj@barcode<-colnames(ncounts)
-  bins<-rownames(obj@bmat$filter)
-  bins<-lapply(bins, function(x) {strsplit(x,split = '-')})   
-  df<- data.frame(matrix(unlist(bins),ncol = 3, byrow=T),stringsAsFactors=FALSE)   
-  colnames(df)<-c('chr','start','end')    
-  library(GenomicRanges)   
-  features<-makeGRangesFromDataFrame(df)   
+  bins <- rownames(obj@bmat$filter)
+  bins_bed = do.call(rbind, strsplit(x = bins, split = '[:-]'))
+  bins_bed = as.data.frame(bins_bed)
+  write.table(bins_bed, "./bins_bed.bed", quote=F, sep="\t",row.names=F, col.names=F)
+  peakfile <- "./bins_bed.bed"
+  bin.use <- chromVAR::getPeaks(peakfile, sort_peaks = TRUE)
+  file.remove("./bins_bed.bed")
+  idy = queryHits(findOverlaps(art@feature, bin.use));
+  features <- art@feature
+  if(length(idy) > 0){features <- features[-idy,]}  
   obj@feature<-features
   return(obj)
 }
@@ -252,7 +256,7 @@ DimReduce <- function(obj, n=NULL,span=NULL,num=NULL,scale=NULL) {
   pdf("Standard Deviation of SVs.pdf")
   x =c(1:num)
   plot(x,svd$sdev[1:num], pch=16,xlab="SVs",ylab="Standard Deviation of SVs")
-  lines(newX[1:num],ret_p$y[1:num], pch=16,col="red")
+  # lines(newX[1:num],ret_p$y[1:num], pch=16,col="red")
   dev.off()
   
   svd_obj<-new('SVD')
@@ -468,159 +472,160 @@ Visualization_2D <- function(obj,reductions='TSNE' ,anno=NULL,fileName=NULL,colo
 # 
 
 
-### ******* 1. a function to map ATAC bins/peaks to genome annotation (gene levels) --------
-MapBin2Gene = function(Bmat = NULL, ### the cell-by-bin matrix
-                       binFormat = 'binary_matrix', ### the format of cell-by-bin matrix
-                       bin_file = NULL,
-                       Org = 'mm10', ### mm10
-                       OrgDb = 'org.Mm.eg.db', ### 
-                       TxDb = NULL, ### if Org = manual, you should input the TxDb defined by yourself 
-                       convert_mat = TRUE, ### whether convert bin-by-cell matrix to cell-by
-                       TSS_window = 3000 ### the window size around TSS to define the promoter 
-){Bmat<-obj@bmat
+# ### ******* 1. a function to map ATAC bins/peaks to genome annotation (gene levels) --------
+# MapBin2Gene = function(Bmat = NULL, ### the cell-by-bin matrix
+#                        binFormat = 'binary_matrix', ### the format of cell-by-bin matrix
+#                        bin_file = NULL,
+#                        Org = 'mm10', ### mm10
+#                        OrgDb = 'org.Mm.eg.db', ### 
+#                        TxDb = NULL, ### if Org = manual, you should input the TxDb defined by yourself 
+#                        convert_mat = TRUE, ### whether convert bin-by-cell matrix to cell-by
+#                        TSS_window = 3000 ### the window size around TSS to define the promoter 
+# ){Bmat<-obj@bmat
 
-options(stringsAsFactors = F)
+# options(stringsAsFactors = F)
 
-cat(">> checking depedent packages ... \t\t\t", format(Sys.time(), 
-                                                       "%Y-%m-%d %X"), "\n")
+# cat(">> checking depedent packages ... \t\t\t", format(Sys.time(), 
+#                                                        "%Y-%m-%d %X"), "\n")
 
-if (!(requireNamespace("BiocManager", quietly = TRUE))) {
-  cat("Please install package 'BiocManager'");
-  install.packages('BiocManager')
-}
-library(data.table)
-library(GenomicFeatures)
-library(ChIPseeker)
+# if (!(requireNamespace("BiocManager", quietly = TRUE))) {
+#   cat("Please install package 'BiocManager'");
+#   install.packages('BiocManager')
+# }
+# library(data.table)
+# library(GenomicFeatures)
+# library(ChIPseeker)
 
-if (!(requireNamespace("data.table", quietly = TRUE))) {
-  cat("Please install package 'data.table'");
-  install.packages('data.table')
-}
+# if (!(requireNamespace("data.table", quietly = TRUE))) {
+#   cat("Please install package 'data.table'");
+#   install.packages('data.table')
+# }
 
-if (!(requireNamespace("GenomicFeatures", quietly = TRUE))) {
-  cat("Please install package 'GenomicFeatures'");
-  BiocManager::install('GenomicFeatures')
-}
+# if (!(requireNamespace("GenomicFeatures", quietly = TRUE))) {
+#   cat("Please install package 'GenomicFeatures'");
+#   BiocManager::install('GenomicFeatures')
+# }
 
-if (!(requireNamespace("ChIPseeker", quietly = TRUE))) {
-  cat("Please install package 'ChIPseeker'");
-  BiocManager::install('ChIPseeker')
-}
-
-
-
-### load the ATAC IDs of peaks or bins -------  
-cat(">> loading ATAC features ...\t\t\t", format(Sys.time(), 
-                                                 "%Y-%m-%d %X"), "\n")
-
-if(sum(!is.matrix(Bmat))>0){
-  Bmat = Matrix::as.matrix(Bmat)
-  ### matrix is faster than data.frame
-}
-
-if(binFormat == 'binary_matrix'){
-  bins = as.character(rownames(Bmat))
-  bins_bed = do.call(rbind, strsplit(x = bins, split = '[:-]'))
-  bins_bed = as.data.frame(bins_bed);colnames(bins_bed)[1:3] = c('chr','start','end')
-  bins_bed[,2] = as.numeric(bins_bed[,2])
-  bins_bed[,3] = as.numeric(bins_bed[,3])
-  bins.gr = GenomicRanges::GRanges(bins_bed[,1], IRanges(start = bins_bed[,2], end = bins_bed[,3], names = bins))
-}
-if(binFormat == 'bin_file'){
-  bins_bed = read.table(bin_file, sep='\t', fill =T, stringsAsFactors = F, header = F)
-  colnames(bins_bed)[1:3] = c('chr','start','end')
-  bins_bed = transform(bins_bed, name = paste0(chr,':',start,'-',end))
-  bins.gr = GenomicRanges::GRanges(bins_bed$chr, IRanges(start = bins_bed$start, end = bins_bed$end, names = bins))
-}
+# if (!(requireNamespace("ChIPseeker", quietly = TRUE))) {
+#   cat("Please install package 'ChIPseeker'");
+#   BiocManager::install('ChIPseeker')
+# }
 
 
-### load the genome reference  -------- 
-cat(">> adding gene annotation...\t\t\t", format(Sys.time(), 
-                                                 "%Y-%m-%d %X"), "\n")
 
-if(Org == 'mm9'){
-  if (!(requireNamespace("TxDb.Mmusculus.UCSC.mm9.knownGene", quietly = TRUE))) {
-    message("Please install package 'TxDb.Mmusculus.UCSC.mm9.knownGene'");
-    BiocManager::install('TxDb.Mmusculus.UCSC.mm9.knownGene')
-  }
-  txdb = TxDb.Mmusculus.UCSC.mm9.knownGene::TxDb.Mmusculus.UCSC.mm9.knownGene
-  OrgDb = 'org.Mm.eg.db'
-}
-if(Org == 'mm10'){
-  if (!(requireNamespace("TxDb.Mmusculus.UCSC.mm10.knownGene", quietly = TRUE))) {
-    message("Please install package 'TxDb.Mmusculus.UCSC.mm10.knownGene'");
-    BiocManager::install('TxDb.Mmusculus.UCSC.mm10.knownGene')
-  }
-  txdb = TxDb.Mmusculus.UCSC.mm10.knownGene::TxDb.Mmusculus.UCSC.mm10.knownGene
-  OrgDb = 'org.Mm.eg.db'
-}
-if(Org == 'hg19'){
-  if (!(requireNamespace("TxDb.Hsapiens.UCSC.hg19.knownGene", quietly = TRUE))) {
-    message("Please install package 'TxDb.Hsapiens.UCSC.hg19.knownGene'");
-    BiocManager::install('TxDb.Hsapiens.UCSC.hg19.knownGene')
-  }
-  +{}
-  txdb = TxDb.Hsapiens.UCSC.hg19.knownGene::TxDb.Hsapiens.UCSC.hg19.knownGene
-  OrgDb = 'org.Hs.eg.db'
-}
-if(Org == 'hg38'){
-  if (!(requireNamespace("TxDb.Hsapiens.UCSC.hg38.knownGene", quietly = TRUE))) {
-    message("Please install package 'TxDb.Hsapiens.UCSC.hg38.knownGene'");
-    BiocManager::install('TxDb.Hsapiens.UCSC.hg38.knownGene')
-  }
-  txdb = TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
-  OrgDb = 'org.Hs.eg.db'
-}
-if(Org == 'manual'){
-  txdb = TxDb
-}
+# ### load the ATAC IDs of peaks or bins -------  
+# cat(">> loading ATAC features ...\t\t\t", format(Sys.time(), 
+#                                                  "%Y-%m-%d %X"), "\n")
 
-### map to genome reference -----
-cat(">> mapping bins to genome...\t\t\t", format(Sys.time(), 
-                                                 "%Y-%m-%d %X"), "\n")
+# if(sum(!is.matrix(Bmat))>0){
+#   Bmat = Matrix::as.matrix(Bmat)
+#   ### matrix is faster than data.frame
+# }
 
-binAnno <- ChIPseeker::annotatePeak(bins.gr, tssRegion=c(-TSS_window, TSS_window),
-                                    TxDb=txdb, annoDb=OrgDb, level = 'gene',
-                                    genomicAnnotationPriority = c("Promoter","Exon", "Intron",
-                                                                  "Downstream", "Intergenic")) 
+# if(binFormat == 'binary_matrix'){
+#   bins = as.character(rownames(Bmat))
+#   bins_bed = do.call(rbind, strsplit(x = bins, split = '[:-]'))
+#   bins_bed = as.data.frame(bins_bed);colnames(bins_bed)[1:3] = c('chr','start','end')
+#   bins_bed[,2] = as.numeric(bins_bed[,2])
+#   bins_bed[,3] = as.numeric(bins_bed[,3])
+#   bins.gr = GenomicRanges::GRanges(bins_bed[,1], IRanges(start = bins_bed[,2], end = bins_bed[,3], names = bins))
+# }
+# if(binFormat == 'bin_file'){
+#   bins_bed = read.table(bin_file, sep='\t', fill =T, stringsAsFactors = F, header = F)
+#   colnames(bins_bed)[1:3] = c('chr','start','end')
+#   bins_bed = transform(bins_bed, name = paste0(chr,':',start,'-',end))
+#   bins.gr = GenomicRanges::GRanges(bins_bed$chr, IRanges(start = bins_bed$start, end = bins_bed$end, names = bins))
+# }
 
-bin2gene = as.data.frame(binAnno@anno)
-setDT(bin2gene,keep.rownames = 'ID')
-head(bin2gene)
 
-bin2gene[,Location:=annotation]
-bin2gene[grep('Exon',annotation)]$Location = 'Exon'
-bin2gene[grep('Intron',annotation)]$Location = 'Intron'
-bin2gene[grep('Promoter',annotation)]$Location = 'Promoter'
-bin2gene[grep('Down',annotation)]$Location = 'Downstream'
+# ### load the genome reference  -------- 
+# cat(">> adding gene annotation...\t\t\t", format(Sys.time(), 
+#                                                  "%Y-%m-%d %X"), "\n")
 
-bin2use = bin2gene[grep("Promoter",Location)]
-gene2use = unique(bin2use$SYMBOL)
+# if(Org == 'mm9'){
+#   if (!(requireNamespace("TxDb.Mmusculus.UCSC.mm9.knownGene", quietly = TRUE))) {
+#     message("Please install package 'TxDb.Mmusculus.UCSC.mm9.knownGene'");
+#     BiocManager::install('TxDb.Mmusculus.UCSC.mm9.knownGene')
+#   }
+#   txdb = TxDb.Mmusculus.UCSC.mm9.knownGene::TxDb.Mmusculus.UCSC.mm9.knownGene
+#   OrgDb = 'org.Mm.eg.db'
+# }
+# if(Org == 'mm10'){
+#   if (!(requireNamespace("TxDb.Mmusculus.UCSC.mm10.knownGene", quietly = TRUE))) {
+#     message("Please install package 'TxDb.Mmusculus.UCSC.mm10.knownGene'");
+#     BiocManager::install('TxDb.Mmusculus.UCSC.mm10.knownGene')
+#   }
+#   txdb = TxDb.Mmusculus.UCSC.mm10.knownGene::TxDb.Mmusculus.UCSC.mm10.knownGene
+#   OrgDb = 'org.Mm.eg.db'
+# }
+# if(Org == 'hg19'){
+#   if (!(requireNamespace("TxDb.Hsapiens.UCSC.hg19.knownGene", quietly = TRUE))) {
+#     message("Please install package 'TxDb.Hsapiens.UCSC.hg19.knownGene'");
+#     BiocManager::install('TxDb.Hsapiens.UCSC.hg19.knownGene')
+#   }
+#   +{}
+#   txdb = TxDb.Hsapiens.UCSC.hg19.knownGene::TxDb.Hsapiens.UCSC.hg19.knownGene
+#   OrgDb = 'org.Hs.eg.db'
+# }
+# if(Org == 'hg38'){
+#   if (!(requireNamespace("TxDb.Hsapiens.UCSC.hg38.knownGene", quietly = TRUE))) {
+#     message("Please install package 'TxDb.Hsapiens.UCSC.hg38.knownGene'");
+#     BiocManager::install('TxDb.Hsapiens.UCSC.hg38.knownGene')
+#   }
+#   txdb = TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
+#   OrgDb = 'org.Hs.eg.db'
+# }
+# if(Org == 'manual'){
+#   txdb = TxDb
+# }
 
-### select the ATAC bins in gene's promoter
-if(convert_mat==TRUE){
-  ### convert cell-by-bin matrix to cell-by-gene matrix 
-  mat2plot = do.call(rbind, lapply(gene2use, function(gene){
-    bins2use = bin2use[SYMBOL==gene]$ID
-    if(length(bins2use)==1){
-      sum_bins = Bmat[bins2use,]
-    }else{
-      sum_bins = colSums(Bmat[bins2use,])
-    }
-    sum_bins
-  }))
-  rownames(mat2plot) = gene2use
-  cat(">>", nrow(mat2plot), "genes with promoter ATAC bins retained after filtering ...\t\t\t", format(Sys.time(), 
-                                                                                                       "%Y-%m-%d %X"), "\n") 
-  gmat<-as(mat2plot,'Matrix')
-  obj@gmat<-gmat
-  return(obj)
-}else{
-  cat(">>", length(gene2use), "genes with promoter ATAC bins retained after filtering ...\t\t\t\n", 'finished in ',format(Sys.time(), 
-                                                                                                                          "%Y-%m-%d %X"), "\n")  
-  return(bin2gene)
-}
-}
+# ### map to genome reference -----
+# cat(">> mapping bins to genome...\t\t\t", format(Sys.time(), 
+#                                                  "%Y-%m-%d %X"), "\n")
+# TSS_window <- TSS_window
+# binAnno <- ChIPseeker::annotatePeak(bins.gr, tssRegion=c(-TSS_window, TSS_window),
+#                                     TxDb=txdb, annoDb=OrgDb, level = 'gene',
+#                                     genomicAnnotationPriority = c("Promoter","Exon", "Intron",
+#                                                                   "Downstream", "Intergenic")) 
+
+# bin2gene = as.data.frame(binAnno@anno)
+# setDT(bin2gene,keep.rownames = 'ID')
+# head(bin2gene)
+
+# bin2gene[,Location:=annotation]
+# bin2gene[grep('Exon',annotation)]$Location = 'Exon'
+# bin2gene[grep('Intron',annotation)]$Location = 'Intron'
+# bin2gene[grep('Promoter',annotation)]$Location = 'Promoter'
+# bin2gene[grep('Down',annotation)]$Location = 'Downstream'
+
+# bin2use = bin2gene[grep("Promoter",Location)]
+# gene2use = unique(bin2use$SYMBOL)
+
+# ### select the ATAC bins in gene's promoter
+# if(convert_mat==TRUE){
+#   ### convert cell-by-bin matrix to cell-by-gene matrix 
+#   mat2plot = do.call(rbind, lapply(gene2use, function(gene){
+#     bins2use = bin2use[SYMBOL==gene]$ID
+#     if(length(bins2use)==1){
+#       sum_bins = Bmat[bins2use,]
+#     }else{
+#       sum_bins = colSums(Bmat[bins2use,])
+#     }
+#     sum_bins
+#   }))
+#   rownames(mat2plot) = gene2use
+#   cat(">>", nrow(mat2plot), "genes with promoter ATAC bins retained after filtering ...\t\t\t", format(Sys.time(), 
+#                                                                                                        "%Y-%m-%d %X"), "\n") 
+#   gmat <- as(mat2plot,'Matrix')
+#   # gmat <- t(t(gmat)/art@metaData$nCounts)
+#   obj@gmat<-gmat
+#   return(obj)
+# }else{
+#   cat(">>", length(gene2use), "genes with promoter ATAC bins retained after filtering ...\t\t\t\n", 'finished in ',format(Sys.time(), 
+#                                                                                                                           "%Y-%m-%d %X"), "\n")  
+#   return(bin2gene)
+# }
+# }
 
 #### ***** Code examples:
 ### using the downloaded genome TxDb:
@@ -898,7 +903,7 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe",'BCL9
   library(ggpubr)
   library(cowplot)
   Gmat<-obj@gmat
-  cellsReduction<-data.frame(obj@barcode)
+  cellsReduction <- data.frame(obj@barcode)
   
   # if(sum(!is.data.frame(Gmat))>0){
   #   Gmat = as.data.frame(Gmat)
@@ -909,35 +914,37 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe",'BCL9
   mat2plot =  Gmat[rownames(Gmat)%in%gene2plot,]
   if(mode(mat2plot)=='numeric'){ 
     mat2plot=as.data.frame(t(mat2plot))
-    
+
     rownames(mat2plot)<-rownames(Gmat)[rownames(Gmat)%in%gene2plot]}
   gene2plot = rownames(mat2plot)
   
   if(length(gene2plot)>9){
     stop('The maximun of genes to plot was limmited to 9!')
   }
-  
   p.list = lapply(1:nrow(mat2plot),
                   function(i){
                     gene = rownames(mat2plot)[i]
                     cellsReduction[,'level'] = as.numeric(mat2plot[gene,])
+                    od <- order(cellsReduction[,'level'])
+                    cellsReduction <- cellsReduction[od,]
                     if(reduction == 'UMAP'){
-                      UMAP_1<-obj@reductions$UMAP[,'UMAP_1']
-                      UMAP_2<-obj@reductions$UMAP[,'UMAP_2']
-                      umap = ggplot(cellsReduction[order(cellsReduction[,'level']),],
+                      UMAP_1<-obj@reductions$UMAP[od,'UMAP_1']
+                      UMAP_2<-obj@reductions$UMAP[od,'UMAP_2']
+                      umap = ggplot(cellsReduction[,],
                                     aes(x=UMAP_1,y=UMAP_2,col=level))+ geom_point(size=1) +
                         scale_color_gradient(low = 'lightgrey', high = 'red') +
-                        labs(title = gene, x = 'UMAP_1', y = 'UMAP_2')+  
-                        plot_theme +theme(legend.position = 'right', legend.title = element_blank())
+                        labs(title = paste("Counts, ",gene, sep=""), x = 'UMAP_1', y = 'UMAP_2')+  
+                        plot_theme + theme(legend.position = 'right', legend.title = element_blank()) 
                       umap
                     }else{
-                      tSNE_1<-obj@reductions$TSNE@matrix[,'tSNE_1']
-                      tSNE_2<-obj@reductions$TSNE@matrix[,'tSNE_2']
-                      tsne = ggplot(cellsReduction[order(cellsReduction[,'level']),],
+                      tSNE_1<-obj@reductions$TSNE@matrix[od,'tSNE_1']
+                      tSNE_2<-obj@reductions$TSNE@matrix[od,'tSNE_2']
+                      tsne = ggplot(cellsReduction[,],
                                     aes(x=tSNE_1,y=tSNE_2,col=level))+ geom_point(size=1) +
+                        # scale_color_gradient(low = 'yellow', high = 'blue') +
                         scale_color_gradient(low = 'lightgrey', high = 'red') +
-                        labs(title = gene, x = 'tSNE_1', y = 'tSNE_2')+
-                        plot_theme +theme(legend.position = 'right', legend.title = element_blank())
+                        labs(title = paste("Counts, ",gene, sep=""), x = 'tSNE_1', y = 'tSNE_2')+
+                        plot_theme + theme(legend.position = 'right', legend.title = element_blank())
                       tsne
                     }
                   })
@@ -945,41 +952,41 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe",'BCL9
   
   if (is.null(x = ncol)) {
     ncol <- 2
-    if (length(x = TF2plot) == 1) {
+    if (length(x = gene2plot) == 1) {
       ncol <- 1
     }
-    if (length(x = TF2plot) > 4) {
+    if (length(x = gene2plot) > 4) {
       ncol <- 3
     }
   }
   
-  if(length(TF2plot)==1){
+  if(length(gene2plot)==1){
     p=p.list[[1]]
     print(p.list[[1]])
   }
-  if(length(TF2plot)==2){
+  if(length(gene2plot)==2){
     p=plot_grid(p.list[[1]], p.list[[2]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]], ncol=ncol))
   }
-  if(length(TF2plot)==3){
+  if(length(gene2plot)==3){
     p=plot_grid(p.list[[1]], p.list[[2]],
                 p.list[[3]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]], ncol=ncol))
   }
-  if(length(TF2plot)==4){
+  if(length(gene2plot)==4){
     p=plot_grid(p.list[[1]], p.list[[2]],
                 p.list[[3]],p.list[[4]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]], ncol=ncol))
   }
-  if(length(TF2plot)==5){
+  if(length(gene2plot)==5){
     p=plot_grid(p.list[[1]], p.list[[2]],
                 p.list[[3]],p.list[[4]], p.list[[5]], ncol=ncol)
     print(plot_grid(p.list[[1]], p.list[[2]],
                     p.list[[3]],p.list[[4]], p.list[[5]], ncol=ncol))
   }
-  if(length(TF2plot)==6){
+  if(length(gene2plot)==6){
     p=plot_grid(p.list[[1]], p.list[[2]],
                 p.list[[3]],p.list[[4]],
                 p.list[[5]], p.list[[6]], ncol=ncol)
@@ -987,7 +994,7 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe",'BCL9
                     p.list[[3]],p.list[[4]],
                     p.list[[5]], p.list[[6]], ncol=ncol))
   }
-  if(length(TF2plot)==7){
+  if(length(gene2plot)==7){
     p=plot_grid(p.list[[1]], p.list[[2]],
                 p.list[[3]],p.list[[4]],
                 p.list[[5]], p.list[[6]],
@@ -997,7 +1004,7 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe",'BCL9
                     p.list[[5]], p.list[[6]],
                     p.list[[7]], ncol=ncol))
   }
-  if(length(TF2plot)==8){
+  if(length(gene2plot)==8){
     p=plot_grid(p.list[[1]], p.list[[2]],
                 p.list[[3]],p.list[[4]],
                 p.list[[5]], p.list[[6]],
@@ -1007,7 +1014,7 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe",'BCL9
                     p.list[[5]], p.list[[6]],
                     p.list[[7]], p.list[[8]],ncol=ncol))
   }
-  if(length(TF2plot)==9){
+  if(length(gene2plot)==9){
     p=plot_grid(p.list[[1]], p.list[[2]],
                 p.list[[3]],p.list[[4]],
                 p.list[[5]], p.list[[6]],
@@ -1468,7 +1475,7 @@ MapBin2Gene = function(obj, ### the cell-by-bin matrix
   }))
   rownames(mat2plot) = gene2use
   cat(">>", nrow(mat2plot), "genes with promoter ATAC bins retained after filtering ...\t\t\t", format(Sys.time(),  "%Y-%m-%d %X"), "\n")  
-  mat2plot<- t(t(mat2plot)/art@metaData$nCounts)*1000000
+  # mat2plot<- t(t(mat2plot)/art@metaData$nCounts)*1000000
   obj@gmat<-as(as.matrix(mat2plot), "dgCMatrix")
   return(obj)
 }
@@ -1508,8 +1515,8 @@ PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1566", "GSX2"),
   library(ggpubr)
   library(cowplot)
   Gmat<-obj@mmat
-  cellsReduction<-data.frame(obj@barcode)
-  
+  cellsReduction <- data.frame(obj@barcode)
+  Gmat <- Gmat[,obj@barcode]
   # if(sum(!is.data.frame(Gmat))>0){
   #   Gmat = as.data.frame(Gmat)
   # }
@@ -1535,21 +1542,23 @@ PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1566", "GSX2"),
                   function(i){
                     gene = rownames(mat2plot)[i]
                     cellsReduction[,'level'] = as.numeric(mat2plot[gene,])
+                    # od <- order(cellsReduction[,'level'])
+                    # cellsReduction <- cellsReduction[od, ]
                     if(reduction == 'UMAP'){
                       UMAP_1<-obj@reductions$UMAP[,'UMAP_1']
                       UMAP_2<-obj@reductions$UMAP[,'UMAP_2']
-                      umap = ggplot(cellsReduction[order(cellsReduction[,'level']),],
+                      umap = ggplot(cellsReduction,
                                     aes(x=UMAP_1,y=UMAP_2,col=level))+ geom_point(size=1) +
-                        scale_color_gradient(low = 'lightgrey', high = 'red') +
+                        scale_color_gradient2(low = 'blue', high = 'red') +
                         labs(title = gene, x = 'UMAP_1', y = 'UMAP_2')+  
                         plot_theme +theme(legend.position = 'right', legend.title = element_blank())
                       umap
                     }else{
                       tSNE_1<-obj@reductions$TSNE@matrix[,'tSNE_1']
                       tSNE_2<-obj@reductions$TSNE@matrix[,'tSNE_2']
-                      tsne = ggplot(cellsReduction[order(cellsReduction[,'level']),],
+                      tsne = ggplot(cellsReduction,
                                     aes(x=tSNE_1,y=tSNE_2,col=level))+ geom_point(size=1) +
-                        scale_color_gradient(low = 'lightgrey', high = 'red') +
+                        scale_color_gradient2(low = 'blue', high = 'red') +
                         labs(title = gene, x = 'tSNE_1', y = 'tSNE_2')+
                         plot_theme +theme(legend.position = 'right', legend.title = element_blank())
                       tsne
@@ -1786,18 +1795,63 @@ Read_counts <- function(
   }
 }
 
-Read_snap<-function(file,sample="atac",bin.size=NULL){
-  library(SnapATAC)
-  if(is.null(bin.size)){stop('missing bins.size')}
-  obj<-createSnap(file = file,sample = sample)
-  obj<-addBmatToSnap(obj,bin.size = bin.size)
-  data<-t(obj@bmat)
-  data@Dimnames[[1]] <- gsub(':','-',obj@feature$name) 
-  data@Dimnames[[2]]<- obj@barcode
-  art<-CreatescART(data)
+Read_snap<-function(file,barcode,bin.size=NULL,sample="atac"){
+  if (is.null(bin.size)) {
+    bin.size <- 5000
+  } else {
+    bin.size  <- bin.size 
+  }
   
-  return(art)
+  library(SnapATAC)
+  sample <- sample
+  x.sp <- createSnap(file = file,sample = sample)
+barcodes = read.csv(
+    barcode,
+    head=TRUE
+  );
+barcodes = barcodes[2:nrow(barcodes),];
+promoter_ratio = (barcodes$promoter_region_fragments+1) / (barcodes$passed_filters + 1);
+UMI = log(barcodes$passed_filters+1, 10);
+data = data.frame(UMI=UMI, promoter_ratio=promoter_ratio);
+barcodes$promoter_ratio = promoter_ratio;
+library(viridisLite);
+library(ggplot2);
+
+barcodes.sel = barcodes[which(UMI >= 3 & UMI <= 5 & promoter_ratio >= 0.15 & promoter_ratio <= 0.6),];
+rownames(barcodes.sel) = barcodes.sel$barcode;
+x.sp = x.sp[which(x.sp@barcode %in% barcodes.sel$barcode),];
+x.sp@metaData = barcodes.sel[x.sp@barcode,];
+x.sp
+bin.size <- 5000
+x.sp = addBmatToSnap(x.sp, bin.size=bin.size, num.cores=1)
+x.sp = makeBinary(x.sp, mat="bmat")
+data <- t(x.sp@bmat)
+length(x.sp@barcode)
+length(x.sp@feature)
+dim(data)
+colnames(data) <- x.sp@barcode
+rownames(data) <- x.sp@feature$name
+head(colnames(data))
+
+  obj<-new('scART')
+  obj@metaData <- data.frame(x.sp@barcode)
+  rownames(obj@metaData) <- x.sp@barcode
+ 
+  obj@bmat=list(NULL,NULL,NULL,NULL,NULL)
+  names(obj@bmat)=c('raw','binary','imputation','filter','TF_IDF')
+  obj@bmat$raw=data
+  obj@bmat$bmat=data
+  obj@barcode<-x.sp@barcode
+  obj@feature<-x.sp@feature
+  nCounts<-sparse_Sums(data, rowSums = F)
+  obj@metaData$nCounts<-nCounts
+  return(obj)
 }
+
+
+
+
+
 
 #' Convert a snap object to a seurat object
 #'
