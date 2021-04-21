@@ -35,7 +35,7 @@ art <- CreatescART(data,metadata = annotation2)
 art <- RunSim(art)
 art <- DimReduce(art)
 ```
-![Standard Deviation of SVs](image/Standard Deviation of SVs.png)
+![Standard Deviation of SVs](..//image/Standard Deviation of SVs.png)
 
 # Group cells into clusters
 
@@ -44,7 +44,7 @@ You can take a good look at the output pdf to adjust 'rho_cutoff' and 'delta_cut
 set.seed(10) 
 art <- RunCluster(art, delta_cutoff = 11,rho_cutoff = 45)
 ```
-![Dclust_rho_delt](image/Dclust_rho_delt-1618969278617.png)
+![Dclust_rho_delt](../image/Dclust_rho_delt-1618969278617.png)
 
 # Visualize an Embedding
 ```{r}
@@ -58,14 +58,14 @@ Visualization_2D(art,reductions = 'UMAP',anno="type2",color=tsnecols)
 library(patchwork)
 p1|p2
 ```
-![Visualization_2D](image/Visualization_2D.png)
+![Visualization_2D](../image/Visualization_2D.png)
 
 
 # Run trajectory
 art <- RunTrajectory(art, nSV=20, anno="type2")
 plotTrajectory(art, anno="type2") 
 
-![trajectory](image/trajectory-1618969358301.png)
+![trajectory](../image/trajectory-1618969358301.png)
 
 
 # Create cell-by-gene matrix and explore gene accessibility score
@@ -82,7 +82,7 @@ art <- MapBin2Gene(art, ### the cell-by-bin matrix
 
 PlotSelectGenesATAC(art, gene2plot = c("HOXC12","GATA1","CEBPB","EBF1"), reduction = 'TSNE', ncol = 2)
 ```
-![genes](image/PlotSelectGenesATAC.png)
+![genes](../image/PlotSelectGenesATAC.png)
 
 
 # RunChromVAR 
@@ -97,7 +97,7 @@ art <- RunChromVAR(
 )
 PlotSelectTF(art, TF2plot = c('GATA1','EBF1',"SP1"), reduction = 'TSNE', ncol = 2)
 ```
-![motif](image/PlotSelectTF.png)
+![motif](../image/PlotSelectTF.png)
 
 
 ```R
