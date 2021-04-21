@@ -5,3 +5,6 @@
 inst/doc
 doc
 Meta
+data/annotation2_2347cells.Rdata
+data/atac_pbmc_5k_nextgem.snap
+data/ncounts.Rdata
