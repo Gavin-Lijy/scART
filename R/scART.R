@@ -12,6 +12,7 @@
 #' @slot trajectory A matrix object contains DDRTREE for trajectory.
 #' @slot gmat A matrix object contains cellxgene count matrix.
 #' @slot mmat A matrix object contains cellxmotif variability matrix.
+#' @slot pmat A Matrix object contains cellxpeak count matrix.
 #' @name scART-class
 #' @rdname scART-class
 #' @exportClass scART
@@ -20,8 +21,9 @@
 library(methods)
 # library(Matrix)
 # library(GenomicRanges)
-setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",bmat = "list",smat='Matrix',gmat = "Matrix",
-                            mmat = "Matrix",reductions = "list",trajectory='Matrix' ))
+setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",
+                            bmat = "list",smat='Matrix',gmat = "Matrix",
+                            mmat = "Matrix", pmat="Matrix",reductions = "list",trajectory='Matrix' ))
 
 .valid.scART.barcode <- function(object)
 {
@@ -37,22 +39,16 @@ setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data
   c(.valid.scART.barcode(object))
 }
 # methods::setValidity("scART", .valid.scART)
-setMethod("show", signature = "scART",
-          definition = function(object) {
-            cat("number of barcodes: ", ifelse(is.null(length(object@barcode)), 0, length(object@barcode)), "\n", sep="");
-            cat("number of bins: ", ncol(object@bmat), "\n", sep="");
-            cat("number of genes: ", ncol(object@gmat), "\n", sep="");
-            cat("number of motifs: ", ncol(object@mmat), "\n", sep="");
-          }
-)
+
 setClass( 'SVD',slots = c(x='matrix',sdev='numeric'))
 setClass('TSNE',slots = c(matrix='matrix',nSV='numeric'))
 setClass('TSNE_3D',slots = c(matrix='matrix',nSV='numeric'))
 setMethod("show", signature = "scART",
           definition = function(object) {
             cat("number of barcodes: ", ifelse(is.null(length(object@barcode)), 0, length(object@barcode)), "\n", sep="");
-            cat("number of bins: ", ncol(object@bmat), "\n", sep="");
-            cat("number of genes: ", ncol(object@gmat), "\n", sep="");
-            cat("number of motifs: ", ncol(object@mmat), "\n", sep="");
+            cat("number of original bins: ", nrow(object@bmat$raw), "\n", sep="");
+            if(!(is.null(object@bmat$filter))){cat("number of filtered bins: ", nrow(object@bmat$raw), "\n", sep="");}
+            cat("number of genes: ", nrow(object@gmat), "\n", sep="");
+            cat("number of motifs: ", nrow(object@mmat), "\n", sep="");
           }
 )
