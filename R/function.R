@@ -343,7 +343,6 @@ RunTSNE <- function(obj, nSV=NULL, ndims=NULL, perplexity =NULL,seed.use=NULL) {
 }
 
 RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV,toPDF=FALSE) {
-  
   if(missing(rho_cutoff)){
     rho_cutoff=2
   }
@@ -384,7 +383,7 @@ RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV,toPDF=FALSE) {
   dclust <- findClusters(dclust, 
                          rho=rho_cutoff, 
                          delta= delta_cutoff)
-  if(toPDF=TRUE){
+  if(toPDF==TRUE){
     pdf("Dclust_rho_delt.pdf")
     options(repr.plot.width=6, repr.plot.height=6)
     plot(dclust$rho,dclust$delta,pch=20,cex=0.6)
