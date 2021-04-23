@@ -342,7 +342,7 @@ RunTSNE <- function(obj, nSV=NULL, ndims=NULL, perplexity =NULL,seed.use=NULL) {
   
 }
 
-RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV) {
+RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV,toPDF=FALSE) {
   
   if(missing(rho_cutoff)){
     rho_cutoff=2
@@ -384,15 +384,25 @@ RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV) {
   dclust <- findClusters(dclust, 
                          rho=rho_cutoff, 
                          delta= delta_cutoff)
+  if(toPDF=TRUE){
+    pdf("Dclust_rho_delt.pdf")
+    options(repr.plot.width=6, repr.plot.height=6)
+    plot(dclust$rho,dclust$delta,pch=20,cex=0.6)
+    points(dclust$rho[dclust$peaks],dclust$delta[dclust$peaks],col="red",pch=20,cex=0.8)
+    text(dclust$rho[dclust$peaks]+0.5,dclust$delta[dclust$peaks]+0.5,labels=dclust$clusters[dclust$peaks])
+    abline(v=rho_cutoff)
+    abline(h=delta_cutoff)
+    dev.off() 
+  }else{
+    options(repr.plot.width=6, repr.plot.height=6)
+    plot(dclust$rho,dclust$delta,pch=20,cex=0.6)
+    points(dclust$rho[dclust$peaks],dclust$delta[dclust$peaks],col="red",pch=20,cex=0.8)
+    text(dclust$rho[dclust$peaks]+0.5,dclust$delta[dclust$peaks]+0.5,labels=dclust$clusters[dclust$peaks])
+    abline(v=rho_cutoff)
+    abline(h=delta_cutoff)
+  }
   
-  pdf("Dclust_rho_delt.pdf")
-  options(repr.plot.width=6, repr.plot.height=6)
-  plot(dclust$rho,dclust$delta,pch=20,cex=0.6)
-  points(dclust$rho[dclust$peaks],dclust$delta[dclust$peaks],col="red",pch=20,cex=0.8)
-  text(dclust$rho[dclust$peaks]+0.5,dclust$delta[dclust$peaks]+0.5,labels=dclust$clusters[dclust$peaks])
-  abline(v=rho_cutoff)
-  abline(h=delta_cutoff)
-  dev.off()
+ 
   # save(dclust, file=paste(out_dir, "dclust.Rdata",sep=""))
   print(paste("number of clusters=",length(table(dclust$clusters))))
   scART_cluster <- as.factor(dclust$clusters)
