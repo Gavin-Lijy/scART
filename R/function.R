@@ -109,7 +109,7 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   if(genome=='mm10'){system("wget http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz");
     library(GenomicRanges);
     black_list = read.table("mm10.blacklist.bed.gz");}
-    black_list.gr = GRanges(
+  black_list.gr = GRanges(
     black_list[,1], 
     IRanges(black_list[,2], black_list[,3])
   );
@@ -118,7 +118,7 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   
   
   if (is.null(ncell)) {
-    ncell <- dim(raw)[2]*0.05
+    ncell <- dim(raw)[2]*0.01
   } else {
     ncell <- ncell
   }
@@ -147,26 +147,26 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   new_peaks2 = sparse_Sums(ncounts, rowSums = T)
   new_peaks2 <- scale(log10(new_peaks2))
   if(toPDF==TRUE){
-  pdf("Cell_Site_Distribution.pdf", width=10)    
-  par(mfrow=c(1,2))
-  options(repr.plot.width=4, repr.plot.height=4)
-  hist(log10(new_peaks+1),main="No. of Cells Each Site is Observed In",breaks=50,xlab="log10, nCells")
-  # abline(v=log10(ncell),lwd=2,col="indianred")
-  # abline(v=log10(ncell2),lwd=2,col="indianred")
-  hist(log10(new_counts),main="Number of Sites Each Cell Uses",breaks=50,xlab="log10, nBins")
-  # abline(v=log10(npeak),lwd=2,col="indianred")
-  # hist(scale(log10(new_peaks+1)),main="No. of Cells Each Site is Observed In",breaks=50,xlab="raw, scale(log10())")
-  # abline(v=ncell3,lwd=2,col="indianred")
-  # hist(scale(log10(new_peaks[new_peaks2 < ncell3]+1)),main="No. of Cells Each Site is Observed In",xlab="filter1,scale(log10())",breaks=50)
-  # abline(v=ncell3,lwd=2,col="indianred")
-  dev.off()}else{
+    pdf("Cell_Site_Distribution.pdf", width=10)    
     par(mfrow=c(1,2))
     options(repr.plot.width=4, repr.plot.height=4)
     hist(log10(new_peaks+1),main="No. of Cells Each Site is Observed In",breaks=50,xlab="log10, nCells")
     # abline(v=log10(ncell),lwd=2,col="indianred")
     # abline(v=log10(ncell2),lwd=2,col="indianred")
     hist(log10(new_counts),main="Number of Sites Each Cell Uses",breaks=50,xlab="log10, nBins")
-  }
+    # abline(v=log10(npeak),lwd=2,col="indianred")
+    # hist(scale(log10(new_peaks+1)),main="No. of Cells Each Site is Observed In",breaks=50,xlab="raw, scale(log10())")
+    # abline(v=ncell3,lwd=2,col="indianred")
+    # hist(scale(log10(new_peaks[new_peaks2 < ncell3]+1)),main="No. of Cells Each Site is Observed In",xlab="filter1,scale(log10())",breaks=50)
+    # abline(v=ncell3,lwd=2,col="indianred")
+    dev.off()}else{
+      par(mfrow=c(1,2))
+      options(repr.plot.width=4, repr.plot.height=4)
+      hist(log10(new_peaks+1),main="No. of Cells Each Site is Observed In",breaks=50,xlab="log10, nCells")
+      # abline(v=log10(ncell),lwd=2,col="indianred")
+      # abline(v=log10(ncell2),lwd=2,col="indianred")
+      hist(log10(new_counts),main="Number of Sites Each Cell Uses",breaks=50,xlab="log10, nBins")
+    }
   
   ncounts2 <- ncounts[which(new_peaks2 < ncell3),]
   cell.use <- colnames(ncounts2)
@@ -189,16 +189,12 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   bins <- rownames(obj@bmat$filter)
   bins_bed = do.call(rbind, strsplit(x = bins, split = '[:-]'))
   bins_bed = as.data.frame(bins_bed)
-  write.table(bins_bed, "./bins_bed.bed", quote=F, sep="\t",row.names=F, col.names=F)
-  peakfile <- "./bins_bed.bed"
-  bin.use <- chromVAR::getPeaks(peakfile, sort_peaks = TRUE)
-  file.remove("./bins_bed.bed")
-  idy = queryHits(findOverlaps(obj@feature, bin.use));
-  features <- obj@feature
-  if(length(idy) > 0){features <- features[-idy,]}  
+  colnames(bins_bed)=c('chr','start','end')
+  features=makeGRangesFromDataFrame(bins_bed)
   obj@feature<-features
   return(obj)
 }
+
 
 RunSim <- function(obj) {
   library(textTinyR)
