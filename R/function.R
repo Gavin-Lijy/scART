@@ -98,8 +98,9 @@ RunImputation=function(obj,k=1,ratio=1){
 }
 
 
-SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, genome='hg19') {
+SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, genome='hg19',toPDF=FALSE) {
   raw <- obj@bmat$imputation
+  library(IRanges)
   if(genome=='hg19'){
     system('ls')
     system("wget http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/hg19-human/seq.cov01.ONHG19.bed.gz");
@@ -145,6 +146,7 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   ncounts <- raw[new_peaks > ncell & new_peaks <= ncell2,] 
   new_peaks2 = sparse_Sums(ncounts, rowSums = T)
   new_peaks2 <- scale(log10(new_peaks2))
+  if(toPDF==TRUE){
   pdf("Cell_Site_Distribution.pdf", width=10)    
   par(mfrow=c(1,2))
   options(repr.plot.width=4, repr.plot.height=4)
@@ -157,7 +159,14 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   # abline(v=ncell3,lwd=2,col="indianred")
   # hist(scale(log10(new_peaks[new_peaks2 < ncell3]+1)),main="No. of Cells Each Site is Observed In",xlab="filter1,scale(log10())",breaks=50)
   # abline(v=ncell3,lwd=2,col="indianred")
-  dev.off()
+  dev.off()}else{
+    par(mfrow=c(1,2))
+    options(repr.plot.width=4, repr.plot.height=4)
+    hist(log10(new_peaks+1),main="No. of Cells Each Site is Observed In",breaks=50,xlab="log10, nCells")
+    # abline(v=log10(ncell),lwd=2,col="indianred")
+    # abline(v=log10(ncell2),lwd=2,col="indianred")
+    hist(log10(new_counts),main="Number of Sites Each Cell Uses",breaks=50,xlab="log10, nBins")
+  }
   
   ncounts2 <- ncounts[which(new_peaks2 < ncell3),]
   cell.use <- colnames(ncounts2)
@@ -184,8 +193,8 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
   peakfile <- "./bins_bed.bed"
   bin.use <- chromVAR::getPeaks(peakfile, sort_peaks = TRUE)
   file.remove("./bins_bed.bed")
-  idy = queryHits(findOverlaps(art@feature, bin.use));
-  features <- art@feature
+  idy = queryHits(findOverlaps(obj@feature, bin.use));
+  features <- obj@feature
   if(length(idy) > 0){features <- features[-idy,]}  
   obj@feature<-features
   return(obj)
@@ -213,7 +222,7 @@ RunSim <- function(obj) {
   return(obj)
 }
 
-DimReduce <- function(obj, n=NULL,span=NULL,num=NULL,scale=NULL) {
+DimReduce <- function(obj, n=NULL,span=NULL,num=NULL,scale=NULL,toPDF=FALSE) {
   library(irlba)
   data<-obj@smat
   if (is.null(data)) {
@@ -253,11 +262,13 @@ DimReduce <- function(obj, n=NULL,span=NULL,num=NULL,scale=NULL) {
   ret <- loess(y~x, data=mydf, span=span)
   newX=seq(1,length(svd$sdev[c(1:num)]),1)
   ret_p <- data.frame(x=newX, y=predict(ret, newdata=data.frame(x=newX)))
+  if(toPDF==TRUE){
   pdf("Standard Deviation of SVs.pdf")
   x =c(1:num)
   plot(x,svd$sdev[1:num], pch=16,xlab="SVs",ylab="Standard Deviation of SVs")
   # lines(newX[1:num],ret_p$y[1:num], pch=16,col="red")
-  dev.off()
+  dev.off()}else{x =c(1:num)
+  plot(x,svd$sdev[1:num], pch=16,xlab="SVs",ylab="Standard Deviation of SVs")}
   
   svd_obj<-new('SVD')
   svd_obj@x<-as.matrix(svd$x )
@@ -395,7 +406,8 @@ RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV) {
 Visualization_2D <- function(obj,reductions='TSNE' ,anno=NULL,fileName=NULL,color=NULL,size=NULL){
   library( scales)
   if (is.null(anno)) {
-    anno <- obj@metaData$cluster
+    if(is.null( obj@metaData$cluster)){stop("Please assign a value to anno")}
+    else{anno <- obj@metaData$cluster}
   } else {
     anno <- eval(parse(text =paste0('obj@metaData$',anno) ))
   }
@@ -712,6 +724,7 @@ RunChromVAR <- function(
   library(GenomicRanges)
   library(motifmatchr)
   library(JASPAR2016)
+  library(IRanges)
   cat(">>> checking input matrix ... \t\t\t", format(Sys.time(), 
                                                      "%Y-%m-%d %X"), "\n")
   
@@ -1220,7 +1233,8 @@ FindDAR <- function(obj, test_clust,out_dir=NULL){
 
 plotTrajectory <- function(obj,anno=NULL,color=NULL) {
   if (is.null(anno)) {
-    anno <- obj@metaData$cluster
+    if(is.null( obj@metaData$cluster)){stop("Please assign a value to anno")}
+    else{anno <- obj@metaData$cluster}
   } else {
     anno <- eval(parse(text =paste0('obj@metaData$',anno) ))
   }
@@ -1251,8 +1265,7 @@ plotTrajectory <- function(obj,anno=NULL,color=NULL) {
 }
 
 
-RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim=NULL,data=NULL,gamma=NULL){
-  
+RunTrajectory <- function(obj,sigma=NULL, lambda=NULL, nSV=NULL, ndim=NULL,data=NULL,gamma=NULL,seed.use=10){
   if (is.null(sigma)) {
     sigma <- 0.001
   } else {
@@ -1263,13 +1276,7 @@ RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim
   } else {
     lambda <- lambda
   }
-  if (is.null(anno)) {
-    anno <- as.data.frame(obj@metaData$cluster)
-    rownames(anno)<-rownames(obj@metaData)
-  } else {
-    anno <- as.data.frame(eval(parse(text =paste0('obj@metaData$',anno) )))
-    rownames(anno)<-rownames(obj@metaData)
-  }
+  
   if (is.null(nSV)) {
     nSV <- 10
   } else {
@@ -1298,7 +1305,7 @@ RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim
   print(dim(svd_tsne)[2])
   
   library(Rtsne)
-  set.seed(10)
+  set.seed(seed.use)
   data <- svd_tsne
   tsne_out = Rtsne(data, pca=F, dims =5 , perplexity = 30,
                    theta = 0.5, check_duplicates = TRUE, max_iter = 500)
@@ -1310,7 +1317,7 @@ RunTrajectory <- function(obj, anno=NULL,sigma=NULL, lambda=NULL, nSV=NULL, ndim
   colnames(expr_matrix) <- obj@barcode
   rownames(expr_matrix) <- c(paste("dim",c(1:dim(expr_matrix)[1]),sep="_"))
   
-  cells <- as.data.frame(anno)
+  cells <- art@metaData
   
   genes <- as.data.frame(rownames(expr_matrix))
   colnames(genes) <- c("gene_short_name")
@@ -1380,6 +1387,7 @@ MapBin2Gene = function(obj, ### the cell-by-bin matrix
     Bmat = Matrix::as.matrix(Bmat)
     ### matrix is faster than data.frame
   }
+  library(IRanges)
   
   if(binFormat == 'binary_matrix'){
     bins = as.character(rownames(Bmat))
@@ -1974,17 +1982,17 @@ art2seurat <- function(
 #' @export
 
 art2snap <- function(
-  obj, 
-  input.mat ="bmat"){
+  obj,
+  gmat=FALSE){
   cat("Epoch: checking input parameters ... \n", file = stderr())
   if(missing(obj)){
     stop("obj is missing")
   }else{
     if(!is(obj,'scART')){
       stop("obj is not a snap object");
-    }  
+    }
     if((x=length(obj@barcode))==0L){
-      stop("obj@barcode is empty");   
+      stop("obj@barcode is empty");
     }
   }
   # check if Seurat is installed
@@ -1993,60 +2001,29 @@ art2snap <- function(
   } else {
     stop("Please install SnapATAC");
   }
-  
-  if((x=nrow(obj@gmat)) == 0L){
-    stop("gmat in obj is empty!");
-  }
-  gmat.use = (as(obj@gmat,'dgCMatrix'))
-  # check if mat is binary;
-  
-  
-  if(input.mat == "bmat"){
-    data.use = obj@bmat$filter
-    peak.use = as.data.frame(obj@feature);
-  }else{
-    data.use = obj@gmat;
-    peak.use = as.data.frame(rownames(data.use));
-  }
-  
+  data.use = obj@bmat$filter
+  peak.use = as.data.frame(obj@feature);
   if((x=nrow(data.use)) == 0L){
     stop("input matrix is empty!")
   }
-  
   metaData.use = obj@metaData;
   if((x=nrow(metaData.use)) == 0L){
-    stop("metaData is empty!")   
+    stop("metaData is empty!")
   }
-  
   ncell = length(obj@barcode)
-  nvar = dim(obj@reductions$SVD@x)[2];
-  
-  
-  
-  if(any(eigs.dims > nvar) ){
-    stop("'eigs.dims' exceeds PCA dimentions number");
-  }  
-  
-  
-  
-  pca.use = obj@reductions$SVD@x;
-  if((x=nrow(pca.use)) == 0L){
-    stop("dimentionality reduction is empty, runLDM first")
-  }else{
-    pca.use = pca.use[,eigs.dims]
-  }
-  
-  
-  colnames(x = gmat.use) = paste0(obj@barcode);
-  rownames(x = pca.use)  = paste0(obj@barcode);
   rownames(metaData.use) = paste0(obj@barcode);
-  
-  
   snap<- createSnapFromBmat(t(data.use),barcodes = obj@barcode,bins = obj@feature)
-  snap@gmat<-gmat.use
-  # if(norm){ pbmc.atac <- NormalizeData(pbmc.atac)  }
-  # if(scale){pbmc.atac <- ScaleData(pbmc.atac)} 
+  
+  if(gmat==TRUE){
+    if((x=nrow(obj@gmat)) == 0L){
+      stop("gmat in obj is empty!");
+    }
+    gmat.use = (as(obj@gmat,'dgCMatrix'))
+    colnames(x = gmat.use) = paste0(obj@barcode);
+    snap@gmat<-gmat.use
+  }
   return(snap)
 }
+
 
 

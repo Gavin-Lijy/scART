@@ -19,8 +19,8 @@
 #' @importFrom methods setClassUnion 
 #' @import  Matrix GenomicRanges
 library(methods)
-# library(Matrix)
-# library(GenomicRanges)
+library(Matrix)
+library(GenomicRanges)
 setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",
                             bmat = "list",smat='Matrix',gmat = "Matrix",
                             mmat = "Matrix", pmat="Matrix",reductions = "list",trajectory='Matrix' ))
