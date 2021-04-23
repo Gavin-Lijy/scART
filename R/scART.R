@@ -47,7 +47,7 @@ setMethod("show", signature = "scART",
           definition = function(object) {
             cat("number of barcodes: ", ifelse(is.null(length(object@barcode)), 0, length(object@barcode)), "\n", sep="");
             cat("number of original bins: ", nrow(object@bmat$raw), "\n", sep="");
-            if(!(is.null(object@bmat$filter))){cat("number of filtered bins: ", nrow(object@bmat$raw), "\n", sep="");}
+            if(!(is.null(object@bmat$filter))){cat("number of filtered bins: ", nrow(object@bmat$filter), "\n", sep="");}
             cat("number of genes: ", nrow(object@gmat), "\n", sep="");
             cat("number of motifs: ", nrow(object@mmat), "\n", sep="");
           }
