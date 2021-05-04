@@ -2030,5 +2030,73 @@ art2snap <- function(
   return(snap)
 }
 
+runMACS=function(
+  barcode,fileList, 
+  output.prefix,
+  path.to.snaptools,
+  path.to.macs,
+  gsize,
+  tmp.folder,
+  buffer.size=500,
+  macs.options="--nomodel --shift 37 --ext 73 --qval 1e-2 -B --SPMR --call-summits",
+  num.cores=1,
+  keep.minimal=TRUE
+){
+  barcode.files = lapply(fileList, function(file){
+    tempfile(tmpdir = tmp.folder, fileext = ".barcode.txt");
+  })
+  bed.files = lapply(fileList, function(file){
+    tempfile(tmpdir = tmp.folder, fileext = ".bed.gz");
+  })
+  flag.list = lapply(seq(fileList), function(i){
+    
+    barcode.use = barcode
+    write.table(barcode.use, file = barcode.files[[i]], append = FALSE, quote = FALSE, sep = "\t",
+                eol = "\n", na = "NA", dec = ".", row.names = FALSE,
+                col.names = FALSE, qmethod = c("escape", "double"),
+                fileEncoding = "")
+    
+  })
+  
+  # extract the fragments belong to the barcodes	
+  flag.list = mclapply(seq(fileList), function(i){
+    flag = system2(command=path.to.snaptools, 
+                   args=c("dump-fragment", 
+                          "--snap-file", fileList[[i]], 
+                          "--output-file", bed.files[[i]], 
+                          "--barcode-file", barcode.files[[i]],
+                          "--buffer-size", buffer.size
+                   )		
+    )				
+  }, mc.cores=num.cores);
+  
+  combined.bed = tempfile(tmpdir = tmp.folder, fileext = ".bed.gz");
+  flag = system2(command="cat", 
+                 args=c(paste(bed.files, collapse = ' '),
+                        ">", combined.bed
+                 )		
+  )			
+  flag = system2(command=path.to.macs, 
+                 args=c("callpeak", 
+                        "-t", combined.bed, 
+                        "-f", "BED",
+                        "-g", gsize,
+                        macs.options,
+                        "-n", output.prefix))	
+  if(keep.minimal){
+    system(paste("rm ", output.prefix, "_control_lambda.bdg", sep=""));
+    system(paste("rm ", output.prefix, "_peaks.xls", sep=""));
+    system(paste("rm ", output.prefix, "_summits.bed", sep=""));
+  }
+  
+  narrow_2<-read.table(paste(output.prefix, "_peaks.narrowPeak", sep=""))
+  
+  
+  
+  
+  
+  
+  return(narrow)}
+
 
 
