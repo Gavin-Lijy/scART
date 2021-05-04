@@ -1,13 +1,13 @@
-   # library(methods)
-  # methods::setClassUnion("MatrixOrmatrix", c("Matrix", "matrix"))
-  # setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",bmat = "list",smat='Matrix',gmat = "Matrix",
-  #                             mmat = "Matrix",reductions = "list",trajectory='MatrixOrmatrix' ))
-  # 
-  # .valid.scART.barcode <- function(object)
-  # {
-  #   if(length(object@barcode) != nrow(object@metaData)){
-  #     return("slot 'barcode' have different length from 'metaData'")		
-  #   }
+# library(methods)
+# methods::setClassUnion("MatrixOrmatrix", c("Matrix", "matrix"))
+# setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",bmat = "list",smat='Matrix',gmat = "Matrix",
+#                             mmat = "Matrix",reductions = "list",trajectory='MatrixOrmatrix' ))
+# 
+# .valid.scART.barcode <- function(object)
+# {
+#   if(length(object@barcode) != nrow(object@metaData)){
+#     return("slot 'barcode' have different length from 'metaData'")		
+#   }
 #   NULL
 # }
 # 
@@ -259,12 +259,12 @@ DimReduce <- function(obj, n=NULL,span=NULL,num=NULL,scale=NULL,toPDF=FALSE) {
   newX=seq(1,length(svd$sdev[c(1:num)]),1)
   ret_p <- data.frame(x=newX, y=predict(ret, newdata=data.frame(x=newX)))
   if(toPDF==TRUE){
-  pdf("Standard Deviation of SVs.pdf")
-  x =c(1:num)
-  plot(x,svd$sdev[1:num], pch=16,xlab="SVs",ylab="Standard Deviation of SVs")
-  # lines(newX[1:num],ret_p$y[1:num], pch=16,col="red")
-  dev.off()}else{x =c(1:num)
-  plot(x,svd$sdev[1:num], pch=16,xlab="SVs",ylab="Standard Deviation of SVs")}
+    pdf("Standard Deviation of SVs.pdf")
+    x =c(1:num)
+    plot(x,svd$sdev[1:num], pch=16,xlab="SVs",ylab="Standard Deviation of SVs")
+    # lines(newX[1:num],ret_p$y[1:num], pch=16,col="red")
+    dev.off()}else{x =c(1:num)
+    plot(x,svd$sdev[1:num], pch=16,xlab="SVs",ylab="Standard Deviation of SVs")}
   
   svd_obj<-new('SVD')
   svd_obj@x<-as.matrix(svd$x )
@@ -397,7 +397,7 @@ RunCluster <- function(obj,rho_cutoff,delta_cutoff,tsne_3D,nSV,toPDF=FALSE) {
     abline(h=delta_cutoff)
   }
   
- 
+  
   # save(dclust, file=paste(out_dir, "dclust.Rdata",sep=""))
   print(paste("number of clusters=",length(table(dclust$clusters))))
   scART_cluster <- as.factor(dclust$clusters)
@@ -932,7 +932,7 @@ PlotSelectGenesATAC = function(obj, gene2plot = c("Snap25", "Gad2", "Apoe",'BCL9
   mat2plot =  Gmat[rownames(Gmat)%in%gene2plot,]
   if(mode(mat2plot)=='numeric'){ 
     mat2plot=as.data.frame(t(mat2plot))
-
+    
     rownames(mat2plot)<-rownames(Gmat)[rownames(Gmat)%in%gene2plot]}
   gene2plot = rownames(mat2plot)
   
@@ -1539,7 +1539,7 @@ PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1566", "GSX2"),
     {message(paste0(i, ' doesn not exist' ))}
   } )
   if (length(grep(paste(TF2plot,collapse = '|'),rownames(Gmat)))==0)
-    {stop('no TF is found')}
+  {stop('no TF is found')}
   mat2plot =  Gmat[grep(paste(TF2plot,collapse = '|'),rownames(Gmat)),]
   
   if(mode(mat2plot)=='numeric'){ 
@@ -1821,7 +1821,7 @@ Snap2art<-function(snap){
 
 Read_snap<-function(file,barcode,bin.size=NULL,sample="atac"){
   if (is.null(bin.size)) {
-    bin.size <- 5000
+    bin.size=showBinSizes(file)[1]
   } else {
     bin.size  <- bin.size 
   }
@@ -1829,46 +1829,69 @@ Read_snap<-function(file,barcode,bin.size=NULL,sample="atac"){
   library(SnapATAC)
   sample <- sample
   x.sp <- createSnap(file = file,sample = sample)
-barcodes = read.csv(
-    barcode,
-    head=TRUE
-  );
-barcodes = barcodes[2:nrow(barcodes),];
-promoter_ratio = (barcodes$promoter_region_fragments+1) / (barcodes$passed_filters + 1);
-UMI = log(barcodes$passed_filters+1, 10);
-data = data.frame(UMI=UMI, promoter_ratio=promoter_ratio);
-barcodes$promoter_ratio = promoter_ratio;
-library(viridisLite);
-library(ggplot2);
-
-barcodes.sel = barcodes[which(UMI >= 3 & UMI <= 5 & promoter_ratio >= 0.15 & promoter_ratio <= 0.6),];
-rownames(barcodes.sel) = barcodes.sel$barcode;
-x.sp = x.sp[which(x.sp@barcode %in% barcodes.sel$barcode),];
-x.sp@metaData = barcodes.sel[x.sp@barcode,];
-x.sp
-bin.size <- 5000
-x.sp = addBmatToSnap(x.sp, bin.size=bin.size, num.cores=1)
-x.sp = makeBinary(x.sp, mat="bmat")
-data <- t(x.sp@bmat)
-length(x.sp@barcode)
-length(x.sp@feature)
-dim(data)
-colnames(data) <- x.sp@barcode
-rownames(data) <- x.sp@feature$name
-head(colnames(data))
-
-  obj<-new('scART')
-  obj@metaData <- data.frame(x.sp@barcode)
-  rownames(obj@metaData) <- x.sp@barcode
- 
-  obj@bmat=list(NULL,NULL,NULL,NULL,NULL)
-  names(obj@bmat)=c('raw','binary','imputation','filter','TF_IDF')
-  obj@bmat$raw=data
-  obj@bmat$bmat=data
-  obj@barcode<-x.sp@barcode
-  obj@feature<-x.sp@feature
-  nCounts<-sparse_Sums(data, rowSums = F)
-  obj@metaData$nCounts<-nCounts
+  if(missing(barcode)){
+    barcodes = x.sp@barcode
+    library(viridisLite);
+    library(ggplot2);
+    x.sp = addBmatToSnap(x.sp, bin.size=bin.size, num.cores=1)
+    x.sp = makeBinary(x.sp, mat="bmat")
+    data <- t(x.sp@bmat)
+    colnames(data) <- x.sp@barcode
+    rownames(data) <- x.sp@feature$name
+    obj<-new('scART')
+    obj@metaData <- data.frame(x.sp@metaData)
+    obj@bmat=list(NULL,NULL,NULL,NULL,NULL)
+    names(obj@bmat)=c('raw','binary','imputation','filter','TF_IDF')
+    obj@bmat$raw=data
+    obj@bmat$bmat=data
+    obj@barcode<-x.sp@barcode
+    obj@feature<-x.sp@feature
+    nCounts<-sparse_Sums(data, rowSums = F)
+    obj@metaData$nCounts<-nCounts}
+  else{
+    barcodes = read.csv(
+      barcode,
+      head=TRUE
+    );
+    barcodes = barcodes[2:nrow(barcodes),];
+    promoter_ratio = (barcodes$promoter_region_fragments+1) / (barcodes$passed_filters + 1);
+    UMI = log(barcodes$passed_filters+1, 10);
+    data = data.frame(UMI=UMI, promoter_ratio=promoter_ratio);
+    barcodes$promoter_ratio = promoter_ratio;
+    library(viridisLite);
+    library(ggplot2);
+    
+    barcodes.sel = barcodes[which(UMI >= 3 & UMI <= 5 & promoter_ratio >= 0.15 & promoter_ratio <= 0.6),];
+    rownames(barcodes.sel) = barcodes.sel$barcode;
+    x.sp = x.sp[which(x.sp@barcode %in% barcodes.sel$barcode),];
+    x.sp@metaData = barcodes.sel[x.sp@barcode,];
+    x.sp
+    bin.size <- 5000
+    x.sp = addBmatToSnap(x.sp, bin.size=bin.size, num.cores=1)
+    x.sp = makeBinary(x.sp, mat="bmat")
+    data <- t(x.sp@bmat)
+    length(x.sp@barcode)
+    length(x.sp@feature)
+    dim(data)
+    colnames(data) <- x.sp@barcode
+    rownames(data) <- x.sp@feature$name
+    head(colnames(data))
+    
+    obj<-new('scART')
+    obj@metaData <- data.frame(x.sp@barcode)
+    rownames(obj@metaData) <- x.sp@barcode
+    
+    obj@bmat=list(NULL,NULL,NULL,NULL,NULL)
+    names(obj@bmat)=c('raw','binary','imputation','filter','TF_IDF')
+    obj@bmat$raw=data
+    obj@bmat$bmat=data
+    obj@barcode<-x.sp@barcode
+    obj@feature<-x.sp@feature
+    nCounts<-sparse_Sums(data, rowSums = F)
+    obj@metaData$nCounts<-nCounts
+    
+  }
+  
   return(obj)
 }
 
@@ -1876,8 +1899,7 @@ head(colnames(data))
 
 
 
-
-#' Convert a snap object to a seurat object
+obj<-new('scART')#' Convert a snap object to a seurat object
 #'
 #' @param obj A snap object.
 #' @param eigs.dims A vector of the dimensions to use.
@@ -2089,14 +2111,80 @@ runMACS=function(
     system(paste("rm ", output.prefix, "_summits.bed", sep=""));
   }
   
-  narrow_2<-read.table(paste(output.prefix, "_peaks.narrowPeak", sep=""))
-  
-  
-  
-  
-  
+  narrow<-read.table(paste(output.prefix, "_peaks.narrowPeak", sep=""))
   
   return(narrow)}
+Callpeak=function(obj,snapfile,group.by=NULL,path.to.snaptools,output.prefix='scART',path.to.macs,num.cores=1,buffer.size=500,tmp.folder=tempdir(),macs.options="--nomodel --shift 100 --qval 5e-2 -B --SPMR",gsize='hs'){
+  fileList<-as.list(snapfile)
+  if(is.null(group.by)){
+    barcode.use= art@barcode
+    peaks = runMACS(fileList = fileList ,
+                    barcode.use,
+                    output.prefix=output.prefix,
+                    path.to.snaptools=path.to.snaptools ,
+                    path.to.macs=path.to.macs,
+                    gsize=gsize, # mm, hs, etc
+                    buffer.size=buffer.size, 
+                    num.cores=num.cores,
+                    macs.options=macs.options,
+                    tmp.folder=tmp.folder
+    );
+    write.table(peaks.df[,1:3],file = "peaks.combined.bed",append=FALSE,
+                quote= FALSE,sep="\t", eol = "\n", na = "NA", dec = ".", 
+                row.names = FALSE, col.names = FALSE, qmethod = c("escape", "double"),
+                fileEncoding = "")}
+  else{
+    
+    cluster=eval(parse(text=paste0('obj@metaData$',group.by)))
+    clusters.sel = names(table(cluster))
+    
+    # output.prefix=paste0("demo.", gsub(" ", "_", clusters.sel)[i])
+    
+    peaks.ls = mclapply(seq(clusters.sel), function(i){
+      print(clusters.sel[i]);
+      barcode.use<-rownames(obj@metaData[cluster==clusters.sel[i],])
+      output.prefix=paste0(output.prefix, gsub(" ", "_", clusters.sel)[i])
+      peaks=runMACS(
+        barcode.use,fileList , 
+        output.prefix,
+        path.to.snaptools,
+        path.to.macs,
+        gsize="hs", # mm, hs, etc
+        buffer.size=500, 
+        num.cores=1,
+        macs.options="--nomodel --shift 100 --qval 5e-2 -B --SPMR --to-large",
+        tmp.folder=tempdir()
+      );
+      peaks
+    }, mc.cores=5)
+    peaks.names = system("ls | grep narrowPeak", intern=TRUE);
+    peak.gr.ls = lapply(peaks.names, function(x){
+      peak.df = read.table(x)
+      GRanges(peak.df[,1], IRanges(peak.df[,2], peak.df[,3]))
+    })
+    
+    peak.gr = reduce(Reduce(c, peak.gr.ls))
+    peaks.df = as.data.frame(peak.gr)[,1:3];
+    write.table(peaks.df,file = "peaks.combined.bed",append=FALSE,
+                quote= FALSE,sep="\t", eol = "\n", na = "NA", dec = ".", 
+                row.names = FALSE, col.names = FALSE, qmethod = c("escape", "double"),
+                fileEncoding = "")}
+}
+
+Addpmat<-function(obj,path.to.snaptools,snapfile){
+  system2(command=path.to.snaptools, 
+          args=c('snap-add-pmat',"--snap-file", snapfile, 
+                 "--peak-file", 'peaks.combined.bed'))
+  fileList=snapfile
+  library(SnapATAC)
+  a=createSnap(file=snapfile,sample = 'null')
+  a=addPmatToSnap(a)
+  peak.data=t(a@pmat)
+  rownames(peak.data)=a@peak$name
+  obj@peak=a@peak
+  obj@pmat=peak.data
+  return(obj)
+}
 
 
 

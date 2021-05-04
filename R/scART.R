@@ -21,7 +21,7 @@
 library(methods)
 library(Matrix)
 library(GenomicRanges)
-setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",
+setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",peak='GRanges',
                             bmat = "list",smat='Matrix',gmat = "Matrix",
                             mmat = "Matrix", pmat="Matrix",reductions = "list",trajectory='Matrix' ))
 
@@ -35,7 +35,7 @@ setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data
 
 .valid.scART <- function(object)
 {
-
+  
   c(.valid.scART.barcode(object))
 }
 # methods::setValidity("scART", .valid.scART)
