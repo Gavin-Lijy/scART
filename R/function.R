@@ -67,7 +67,7 @@ CreatescART=function(data,barcode,bins,metadata){
 RunImputation=function(obj,k=1,ratio=1){
   library(Matrix)
   m=obj@bmat$raw
-  knn=function(m,k=1,ratio=1){
+  knn=function(m,k=k,ratio=ratio){
     binarize= function(x,threshold=NA) {
       x@x[x@x < threshold] = 0
       x@x[x@x >=threshold] = 1
@@ -87,7 +87,6 @@ RunImputation=function(obj,k=1,ratio=1){
     matrix<-binarize(m_sum,threshold=0.5)
     final<-rbind(m[1:k,],matrix,m[(rows-k+1):rows,])   
     final@Dimnames[[1]]=m@Dimnames[[1]]
-    final<-as(as.matrix(final),"Matrix")
     return(final)
     
   }
