@@ -35,8 +35,6 @@ return(module)
 module=lapply(1:length(module), function(i){unfactor(unlist(module[i]))})
 exprMat=art@gmat
 nCores=1
-runSCENIC_3_scoreCells <- function(scenicOptions, exprMat, 
-                                   skipBinaryThresholds=FALSE, skipHeatmap=FALSE, skipTsne=FALSE)
 
   
 names(module)=TF.use
