@@ -1491,6 +1491,168 @@ MapBin2Gene = function(obj, ### the cell-by-bin matrix
   obj@gmat<-as(as.matrix(mat2plot), "dgCMatrix")
   return(obj)
 }
+PlotSelectRegulon = function(obj, regulon2plot = c("Snap25", "Gad2", "Apoe",'BCL9'), 
+                             reduction = 'TSNE',
+                             ncol = NULL){
+  plot_theme <- theme(plot.title = element_text(hjust = 0.5, size = 20),
+                      #legend.position = 'right',
+                      legend.title =element_text(size=15),
+                      legend.text = element_text(size=15),
+                      axis.text.x = element_text(size=15),
+                      axis.title.x = element_text(size=15),
+                      axis.title.y = element_text(size=15),
+                      axis.text.y  = element_text(size=15),
+                      panel.border = element_blank(),
+                      axis.line.x = element_line(size=0.25, color="black"),
+                      axis.line.y = element_line(size=0.25, color="black"),
+                      panel.grid.minor.x = element_blank(), panel.grid.minor.y = element_blank(),
+                      panel.grid.major.x = element_blank(), panel.grid.major.y = element_blank(),
+                      panel.background = element_rect(fill='white'),
+                      legend.key=element_blank(),
+                      strip.text.x = element_text(size=15),
+                      strip.text.y = element_text(size=15),
+                      strip.background = element_rect(colour = 'white', fill = 'white'))
+  
+  if (!(requireNamespace("ggplot2", quietly = TRUE))) {
+    cat("Please install package 'ggplot2'");
+    install.packages('ggplot2')
+  }
+  
+  if (!(requireNamespace("ggpubr", quietly = TRUE))) {
+    cat("Please install package 'ggpubr'");
+    install.packages('ggpubr')
+  }
+  library(ggplot2)
+  library(ggpubr)
+  library(cowplot)
+  rmat<-obj@rmat
+  cellsReduction <- data.frame(obj@barcode)
+  
+  # if(sum(!is.data.frame(rmat))>0){
+  #   rmat = as.data.frame(rmat)
+  # }
+  lapply(regulon2plot, function(i){if(!(i %in% rownames(rmat) ))
+  {message(paste0(i, ' doesn not exist' ))}} )
+  if (sum(regulon2plot%in%rownames(rmat))==0){stop('no gene is found')}
+  mat2plot =  rmat[rownames(rmat)%in%regulon2plot,]
+  if(mode(mat2plot)=='numeric'){ 
+    mat2plot=as.data.frame(t(mat2plot))
+    
+    rownames(mat2plot)<-rownames(rmat)[rownames(rmat)%in%regulon2plot]}
+  regulon2plot = rownames(mat2plot)
+  
+  if(length(regulon2plot)>9){
+    stop('The maximun of genes to plot was limmited to 9!')
+  }
+  p.list = lapply(1:nrow(mat2plot),
+                  function(i){
+                    gene = rownames(mat2plot)[i]
+                    cellsReduction[,'level'] = as.numeric(mat2plot[gene,])
+                    od <- order(cellsReduction[,'level'])
+                    cellsReduction <- cellsReduction[od,]
+                    if(reduction == 'UMAP'){
+                      UMAP_1<-obj@reductions$UMAP[od,'UMAP_1']
+                      UMAP_2<-obj@reductions$UMAP[od,'UMAP_2']
+                      umap = ggplot(cellsReduction[,],
+                                    aes(x=UMAP_1,y=UMAP_2,col=level))+ geom_point(size=1) +
+                        scale_color_gradient(low = 'lightgrey', high = 'red') +
+                        labs(title = paste("Regulon, ",gene, sep=""), x = 'UMAP_1', y = 'UMAP_2')+  
+                        plot_theme + theme(legend.position = 'right', legend.title = element_blank()) 
+                      umap
+                    }else{
+                      tSNE_1<-obj@reductions$TSNE@matrix[od,'tSNE_1']
+                      tSNE_2<-obj@reductions$TSNE@matrix[od,'tSNE_2']
+                      tsne = ggplot(cellsReduction[,],
+                                    aes(x=tSNE_1,y=tSNE_2,col=level))+ geom_point(size=1) +
+                        # scale_color_gradient(low = 'yellow', high = 'blue') +
+                        scale_color_gradient(low = 'lightgrey', high = 'red') +
+                        labs(title = paste("Regulon, ",gene, sep=""), x = 'tSNE_1', y = 'tSNE_2')+
+                        plot_theme + theme(legend.position = 'right', legend.title = element_blank())
+                      tsne
+                    }
+                  })
+  
+  
+  if (is.null(x = ncol)) {
+    ncol <- 2
+    if (length(x = regulon2plot) == 1) {
+      ncol <- 1
+    }
+    if (length(x = regulon2plot) > 4) {
+      ncol <- 3
+    }
+  }
+  
+  if(length(regulon2plot)==1){
+    p=p.list[[1]]
+    print(p.list[[1]])
+  }
+  if(length(regulon2plot)==2){
+    p=plot_grid(p.list[[1]], p.list[[2]], ncol=ncol)
+    print(plot_grid(p.list[[1]], p.list[[2]], ncol=ncol))
+  }
+  if(length(regulon2plot)==3){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]], ncol=ncol)
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]], ncol=ncol))
+  }
+  if(length(regulon2plot)==4){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]], ncol=ncol)
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]], ncol=ncol))
+  }
+  if(length(regulon2plot)==5){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]], p.list[[5]], ncol=ncol)
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]], p.list[[5]], ncol=ncol))
+  }
+  if(length(regulon2plot)==6){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]], ncol=ncol)
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]],
+                    p.list[[5]], p.list[[6]], ncol=ncol))
+  }
+  if(length(regulon2plot)==7){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]],
+                p.list[[7]], ncol=ncol)
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]],
+                    p.list[[5]], p.list[[6]],
+                    p.list[[7]], ncol=ncol))
+  }
+  if(length(regulon2plot)==8){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]],
+                p.list[[7]], p.list[[8]],ncol=ncol)
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]],
+                    p.list[[5]], p.list[[6]],
+                    p.list[[7]], p.list[[8]],ncol=ncol))
+  }
+  if(length(regulon2plot)==9){
+    p=plot_grid(p.list[[1]], p.list[[2]],
+                p.list[[3]],p.list[[4]],
+                p.list[[5]], p.list[[6]],
+                p.list[[7]], p.list[[8]],
+                p.list[[9]], ncol=ncol)
+    print(plot_grid(p.list[[1]], p.list[[2]],
+                    p.list[[3]],p.list[[4]],
+                    p.list[[5]], p.list[[6]],
+                    p.list[[7]], p.list[[8]],
+                    p.list[[9]], ncol=ncol))
+  }
+  return(p)
+}
+
+
 
 PlotSelectTF= function(obj,TF2plot = c("GSC2", "EVX1566", "GSX2"), 
                        reduction = 'TSNE',

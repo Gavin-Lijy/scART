@@ -21,9 +21,9 @@
 library(methods)
 library(Matrix)
 library(GenomicRanges)
-setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",peak='GRanges',
+setClass('scART',slots=list(barcode="character",feature='GRanges',metaData="data.frame",
                             bmat = "list",smat='Matrix',gmat = "Matrix",
-                            mmat = "Matrix", pmat="Matrix",reductions = "list",trajectory='Matrix' ))
+                            mmat = "Matrix", pmat="Matrix",reductions = "list",trajectory='Matrix' ))#,peak='GRanges'
 
 .valid.scART.barcode <- function(object)
 {
@@ -52,3 +52,66 @@ setMethod("show", signature = "scART",
             cat("number of motifs: ", nrow(object@mmat), "\n", sep="");
           }
 )
+setMethod("[", "scART",
+          function(x,i,j,mat=c("bmat", "pmat", "gmat"), drop="missing"){
+            .barcode = x@barcode;
+            .feature = x@feature;
+            .bmat = x@bmat;   
+            .gmat = x@gmat;
+            .mmat = x@mmat;
+            .smat = x@smat;
+            .pmat = x@pmat;
+            .reductions = x@reductions;
+            .trajectory = x@trajectory
+            .metaData = x@metaData;
+            # a single row or column
+            if(!missing(i)){
+              if(max(i) > nrow(x)){
+                stop("idx exceeds number of cells");
+              }
+              if(nrow(.bmat) > 0){.bmat <- .bmat[i,,drop=FALSE]}
+              if(nrow(.pmat) > 0){.pmat <- .pmat[i,,drop=FALSE]}
+              if(nrow(.gmat) > 0){.gmat <- .gmat[i,,drop=FALSE]}	   
+              if(nrow(.mmat) > 0){.mmat <- .mmat[i,,drop=FALSE]}	   
+              if(nrow(.jmat@jmat) > 0){.jmat <- .jmat[i,,drop=FALSE]}
+              if(nrow(.smat@dmat) > 0){.smat <- .smat[i,,drop=FALSE]}
+              if(nrow(.tsne) > 0){.tsne <- .tsne[i,,drop=FALSE]}
+              if(nrow(.umap) > 0){.umap <- .umap[i,,drop=FALSE]}
+              if(nrow(.graph@mat) > 0){.graph <- .graph[i,,drop=FALSE]}
+              if(nrow(.metaData) > 0){.metaData <- .metaData[i,,drop=FALSE]}
+              if(length(.cluster) > 0){.cluster <- .cluster[i,drop=FALSE]}
+              if(length(.barcode) > 0){.barcode <- .barcode[i,drop=FALSE]}
+              if(length(.file) > 0){.file <- .file[i,drop=FALSE]}
+              if(length(.sample) > 0){.sample <- .sample[i,drop=FALSE]}
+            }
+            if(!missing(j)){
+              mat = match.arg(mat);
+              if(mat == "bmat"){
+                if(ncol(.bmat) > 0){.bmat <- .bmat[,j,drop=FALSE]}
+                if(length(.feature) > 0){.feature <- .feature[j];}	   
+              }else if(mat == "pmat"){
+                if(ncol(.pmat) > 0){.pmat <- .pmat[,j,drop=FALSE]}
+                if(length(.peak) > 0){.peak <- .peak[j];}	   
+              }else if(mat == "gmat"){
+                if(ncol(.gmat) > 0){.gmat <- .gmat[,j,drop=FALSE]}
+              }
+            }
+            x@bmat = .bmat;
+            x@pmat = .pmat;
+            x@gmat = .gmat;
+            x@mmat = .mmat;
+            x@barcode = .barcode;
+            x@file = .file;
+            x@sample = .sample;
+            x@peak = .peak;
+            x@feature = .feature;
+            x@metaData = .metaData;
+            x@umap = .umap;
+            x@feature = .feature;
+            x@jmat = .jmat;
+            x@smat = .smat;
+            x@graph = .graph;
+            x@cluster = .cluster;
+            x@tsne = .tsne;
+            return(x);
+          })
