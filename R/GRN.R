@@ -1,5 +1,5 @@
 
-gmat=FilterGmat<-function(obj,hvg=2000){
+gmat=FilterGmat<-function(obj,hvg=4000){
   gmat=obj@gmat[!is.na(rownames(gmat)),]
   library(Seurat)
   seu=CreateSeuratObject(counts = gmat)
