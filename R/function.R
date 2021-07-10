@@ -195,7 +195,7 @@ SparseFilter <- function(obj, ncell=NULL, ncell2=NULL, ncell3=NULL,nbin=NULL, ge
 }
 
 
-RunSim <- function(obj) {
+RunSim <- function(obj,inferface='C') {
   library(textTinyR)
   
   ncounts <- obj@bmat$filter
@@ -210,10 +210,29 @@ RunSim <- function(obj) {
   tf_idf_counts = a %*% nfreqs
   obj@bmat$TF_IDF<-tf_idf_counts
   transformed <- tf_idf_counts
-  library(text2vec)
+  
   data <- t(transformed)
-  cosine_sim <- sim2(data ,data , method = "cosine",norm="l2")
+  if(interface=='None'){
+    library(text2vec)
+    cosine_sim <- sim2(data ,data , method = "cosine",norm="l2")
+  }else if (interface=='python'){
+    library(reticulate)
+    sklearn.metrics <- import("sklearn.metrics")
+    np <- import('numpy')
+    cosine_sim = 1-sklearn.metrics$pairwise_distances(data, metric="cosine")
+    rownames(cosine_sim ) <- rownames(data)
+    colnames(cosine_sim ) <- rownames(data)
+    cosine_sim <- as(cosine_sim,'dgCMatrix')
+  }else if (interface=='C'){
+    library(proxyC)
+    # remotes::install_github("AllenInstitute/scrattch.io")
+    # library(scrattch.io)
+    cosine_sim <- simil(data,method = 'cosine',)
+    # cosine_sim <- large_matrix_to_dgCMatrix(cosine_sim,chunk_size = nrow(cosine_sim))
+    }else{stop('The interface is not supported, please use python,C or None')}
+  
   obj@smat<-cosine_sim
+  
   return(obj)
 }
 
