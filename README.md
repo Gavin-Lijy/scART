@@ -1,7 +1,5 @@
 # scART
 
-**scART** is a R package for recognizing cell clusters and constructing trajectory from single-cell epigenomic data
-
 scART: recognizing cell clusters and constructing trajectory from single-cell epigenomic data(https://www.biorxiv.org/content/10.1101/2023.04.08.536108v1.full)
 
 ![flow](image/flow.png)
